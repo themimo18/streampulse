@@ -188,7 +188,7 @@
       let btns = `<button onclick="setIframe('${m.stream_url}')" class="px-3 py-1 rounded-lg bg-fuchsia-600 text-xs font-semibold text-white">Server 1 HD</button>`;
       if (m.server2_url) btns += `<button onclick="setIframe('${m.server2_url}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-fuchsia-600 text-xs font-semibold text-white">Server 2</button>`;
       document.getElementById("server-buttons").innerHTML = btns;
-      setIframe(m.stream_url);
+      if (m.stream_url) { setIframe(m.stream_url); } else { document.getElementById("server-buttons").innerHTML = ""; document.getElementById("player-container").innerHTML = "<p class=\"text-fuchsia-400 text-sm font-semibold\">Stream link will be added 15 mins before kickoff. Refresh soon!</p>"; }
       sec.scrollIntoView({ behavior: "smooth" });
     }
 
