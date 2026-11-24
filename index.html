@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreamPulse — Live US & UK Sports Streams (NFL, NBA, Premier League, UFC)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #0b0f19; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    .tab-active { background: linear-gradient(90deg, #9333ea, #ec4899); color: #ffffff; font-weight: 700; }
+    .tab-inactive { background-color: #1e293b; color: #94a3b8; }
+    .sport-pill-active { background-color: #a855f7; color: #ffffff; }
+    .sport-pill-inactive { background-color: #1e293b; color: #cbd5e1; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+        <h1 class="text-xl font-black tracking-tight text-white">STREAM<span class="text-fuchsia-400">PULSE</span></h1>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="px-2.5 py-1 rounded-full bg-slate-800 text-fuchsia-400 font-semibold">HD 1080p</span>
+        <span class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">US / UK</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl w-full mx-auto px-4 py-5 flex-1">
+
+    <!-- Video Player Section -->
+    <section id="player-section" class="hidden mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <h2 id="now-playing-title" class="text-base md:text-lg font-bold text-white flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+          <span>Live Stream</span>
+        </h2>
+        <button onclick="closePlayer()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">Close Player ✕</button>
+      </div>
+
+      <!-- Server Buttons -->
+      <div id="server-buttons" class="flex flex-wrap gap-2 mb-2"></div>
+
+      <div class="relative rounded-xl overflow-hidden border border-slate-800 bg-black shadow-2xl">
+        <div id="player-container" class="aspect-video w-full flex items-center justify-center">
+          <p class="text-slate-500 text-sm">Loading stream...</p>
+        </div>
+        <!-- Transparent Smartlink Shield -->
+        <div id="player-ad-shield" onclick="triggerPlayerAd()" style="position:absolute;inset:0;z-index:40;cursor:pointer;background:transparent;"></div>
+      </div>
+
+      <p class="text-xs text-slate-400 mt-2 text-center">Tip: If a stream buffers, switch to another server above.</p>
+    </section>
+
+    <!-- ADSTERRA TOP BANNER SLOT -->
+    <div id="ad-top-slot" class="my-3 flex justify-center"></div>
+
+    <!-- Main Navigation Tabs -->
+    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-xl border border-slate-800 mb-4">
+      <button id="btn-tab-schedule" onclick="switchTab('schedule')" class="py-2.5 rounded-lg text-sm transition tab-active">
+        🔥 Live Schedule
+      </button>
+      <button id="btn-tab-channels" onclick="switchTab('channels')" class="py-2.5 rounded-lg text-sm transition tab-inactive">
+        📺 24/7 TV Channels
+      </button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="mb-4">
+      <input id="search-input" type="text" oninput="render()" placeholder="Search teams, leagues, or channels (e.g. Lakers, Arsenal, UFC)..."
+        class="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-fuchsia-500" />
+    </div>
+
+    <!-- Sport Filter Pills -->
+    <div id="sport-filters" class="flex flex-wrap gap-2 mb-5"></div>
+
+    <!-- ADSTERRA NATIVE BANNER SLOT (MIDDLE) -->
+    <div id="ad-middle-slot" class="my-4"></div>
+
+    <!-- Content List -->
+    <div id="content-list" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <p class="text-slate-400 text-sm col-span-full text-center py-8">Loading live matches...</p>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-800 py-5 text-center text-xs text-slate-500 mt-8">
+    StreamPulse — Free HD Live Sports Streams (NFL, NBA, Premier League, UFC, F1). All streams are hosted by third-party providers.
+  </footer>
+
+  <script>
+    const SMARTLINK = "https://budgetezy.org/4/2fb4c68a887e894f3bc34cfc50187156";
+    const sb = window.supabase.createClient("https://uwyljkxcfcqmteltjzxu.supabase.co", "sb_publishable_5E_ajIPbGSP0Kx9a_LJJXQ_xiG4Jahx");
+
+    let MATCHES = [];
+    let CHANNELS = [];
+    let currentTab = "schedule";
+    let currentSport = "all";
+
+    const SPORT_LABELS = {
+      all: "All Sports", football: "Football", basketball: "NBA",
+      "american-football": "NFL", fight: "UFC / Boxing", "motor-sports": "F1"
+    };
+
+    async function loadData() {
+      const [mRes, cRes] = await Promise.all([
+        sb.from("us_matches").select("*").order("is_live", { ascending: false }).order("id", { ascending: false }),
+        sb.from("us_channels").select("*").order("id", { ascending: true })
+      ]);
+      MATCHES = mRes.data || [];
+      CHANNELS = cRes.data || [];
+      render();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById("btn-tab-schedule").className = "py-2.5 rounded-lg text-sm transition " + (tab === "schedule" ? "tab-active" : "tab-inactive");
+      document.getElementById("btn-tab-channels").className = "py-2.5 rounded-lg text-sm transition " + (tab === "channels" ? "tab-active" : "tab-inactive");
+      document.getElementById("sport-filters").style.display = tab === "schedule" ? "flex" : "none";
+      render();
+    }
+
+    function setSport(sport) { currentSport = sport; render(); }
+
+    function renderSportsPills() {
+      const available = ["all", ...new Set(MATCHES.map(m => m.sport).filter(Boolean))];
+      document.getElementById("sport-filters").innerHTML = available.map(s => `
+        <button onclick="setSport('${s}')" class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${currentSport === s ? "sport-pill-active" : "sport-pill-inactive hover:bg-slate-700"}">
+          ${SPORT_LABELS[s] || s.toUpperCase()}
+        </button>
+      `).join("");
+    }
+
+    function render() {
+      renderSportsPills();
+      const q = document.getElementById("search-input").value.toLowerCase();
+      const list = document.getElementById("content-list");
+
+      if (currentTab === "schedule") {
+        const filtered = MATCHES.filter(m =>
+          (currentSport === "all" || m.sport === currentSport) &&
+          ((m.title || "").toLowerCase().includes(q) || (m.league || "").toLowerCase().includes(q))
+        );
+        list.innerHTML = filtered.length ? filtered.map(m => `
+          <div onclick="openMatch(${MATCHES.indexOf(m)})"
+               class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-fuchsia-500/60 cursor-pointer transition flex items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-800 text-pink-400">${SPORT_LABELS[m.sport] || m.sport}</span>
+                <span class="text-xs text-slate-400">${m.league || ""}</span>
+              </div>
+              <h3 class="text-sm md:text-base font-bold text-white">${m.title}</h3>
+            </div>
+            <div class="text-right shrink-0">
+              ${m.is_live
+                ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold"><span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>LIVE</span>'
+                : `<span class="text-xs font-semibold text-slate-400">${m.match_time || "TBA"}</span>`}
+            </div>
+          </div>
+        `).join("") : '<p class="text-slate-500 text-sm col-span-full text-center py-8">No matches added yet.</p>';
+      } else {
+        const filtered = CHANNELS.filter(c =>
+          (c.name || "").toLowerCase().includes(q) || (c.category || "").toLowerCase().includes(q)
+        );
+        list.innerHTML = filtered.length ? filtered.map(c => `
+          <div onclick="playEmbed('${c.name.replace(/'/g, "\\'")}', '${c.stream_url}')"
+               class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-fuchsia-500/60 cursor-pointer transition flex items-center justify-between">
+            <div>
+              <h3 class="text-sm md:text-base font-bold text-white">${c.name}</h3>
+              <p class="text-xs text-slate-400 mt-0.5">${c.category || ""}</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-fuchsia-400 text-xs font-bold">${c.country || "HD"} ▶</span>
+          </div>
+        `).join("") : '<p class="text-slate-500 text-sm col-span-full text-center py-8">No channels added yet.</p>';
+      }
+    }
+
+    function openMatch(idx) {
+      const m = MATCHES[idx];
+      if (!m) return;
+      const sec = document.getElementById("player-section");
+      sec.classList.remove("hidden");
+      document.getElementById("now-playing-title").innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span><span>${m.title}</span>`;
+      let btns = `<button onclick="setIframe('${m.stream_url}')" class="px-3 py-1 rounded-lg bg-fuchsia-600 text-xs font-semibold text-white">Server 1 HD</button>`;
+      if (m.server2_url) btns += `<button onclick="setIframe('${m.server2_url}')" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-fuchsia-600 text-xs font-semibold text-white">Server 2</button>`;
+      document.getElementById("server-buttons").innerHTML = btns;
+      setIframe(m.stream_url);
+      sec.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function playEmbed(title, url) {
+      const sec = document.getElementById("player-section");
+      sec.classList.remove("hidden");
+      document.getElementById("now-playing-title").innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span><span>${title}</span>`;
+      document.getElementById("server-buttons").innerHTML = "";
+      setIframe(url);
+      sec.scrollIntoView({ behavior: "smooth" });
+    }
+
+    function setIframe(url) {
+      document.getElementById("player-container").innerHTML = `
+        <iframe src="${url}" class="w-full h-full border-0" allowfullscreen allow="autoplay; encrypted-media" referrerpolicy="no-referrer"></iframe>
+      `;
+      const shield = document.getElementById("player-ad-shield");
+      if (shield) shield.style.display = "block";
+    }
+
+    function closePlayer() {
+      document.getElementById("player-section").classList.add("hidden");
+      document.getElementById("player-container").innerHTML = "";
+    }
+
+    function triggerPlayerAd() {
+      window.open(SMARTLINK, "_blank");
+      const shield = document.getElementById("player-ad-shield");
+      if (shield) {
+        shield.style.display = "none";
+        setTimeout(() => { shield.style.display = "block"; }, 10 * 60 * 1000);
+      }
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
