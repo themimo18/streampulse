@@ -108,8 +108,11 @@ async function tmLoadAll() {
         const homeName = (home && ((home.team && home.team.displayName) || (home.athlete && home.athlete.displayName))) || ev.name;
         const awayName = (away && ((away.team && away.team.displayName) || (away.athlete && away.athlete.displayName))) || "";
         const dt = new Date(ev.date);
-        const timeStr = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const status = (ev.status && ev.status.type && ev.status.type.shortDetail) || timeStr;
+        const timeStr = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+        const state = ev.status && ev.status.type && ev.status.type.state;
+        const isLive = state === "in";
+        const isDone = state === "post";
+        const status = isLive ? "🔴 LIVE" : (isDone ? "✅ Final (" + timeStr + ")" : "🕒 " + timeStr);
         TM_MATCHES.push({
           sport: f.sport,
           league: f.league,
@@ -117,11 +120,14 @@ async function tmLoadAll() {
           away: awayName,
           title: awayName ? (homeName + " vs " + awayName) : homeName,
           time: timeStr,
+          ts: dt.getTime(),
+          isLive: isLive,
           status: status
         });
       });
     } catch (e) {}
   }));
+  TM_MATCHES.sort((a, b) => (a.ts || 0) - (b.ts || 0));
   tmRender();
 }
 
@@ -142,7 +148,7 @@ function tmRender() {
   grid.innerHTML = list.map(m => {
     const idx = TM_MATCHES.indexOf(m);
     return '<div class="tm-card">' +
-      '<div class="tm-top"><span class="tm-badge">' + m.league + '</span><span>' + m.status + '</span></div>' +
+      '<div class="tm-top"><span class="tm-badge">' + m.league + '</span><span style="color:' + (m.isLive ? '#ef4444' : '#facc15') + ';font-size:12px;">' + m.status + '</span></div>' +
       '<div class="tm-teams">' + m.title + '</div>' +
       '<button class="tm-btn" onclick="tmFill(' + idx + ')">+ Fill Form</button>' +
     '</div>';
