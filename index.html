@@ -402,5 +402,81 @@ function csJumpToSport(sport) {
     loadData();
   </script>
   <script data-cfasync="false" src="https://czernik.org/14/dac6031bda2a9d3c0435075faef71447"></script>
+<!-- CS_LOGOS_MOD -->
+<style>
+  .cs-match-logo {
+    width: 34px; height: 34px; object-fit: contain; flex-shrink: 0;
+    background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 4px; box-sizing: border-box;
+  }
+  .cs-card-with-logo { display: flex !important; align-items: center !important; gap: 12px !important; }
+  .cs-card-body-wrap { flex: 1; min-width: 0; }
+  .cs-cat-icon img { width: 28px; height: 28px; object-fit: contain; }
+</style>
+<script>
+(function() {
+  const LOGOS = {
+    nfl: "https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png",
+    nba: "https://a.espncdn.com/i/teamlogos/leagues/500/nba.png",
+    nhl: "https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png",
+    mlb: "https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png",
+    ufc: "https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png",
+    mma: "https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png",
+    boxing: "https://cdn-icons-png.flaticon.com/512/2972/2972185.png",
+    soccer: "https://cdn-icons-png.flaticon.com/512/53/53283.png",
+    football: "https://cdn-icons-png.flaticon.com/512/53/53283.png"
+  };
+
+  function getLogo(text) {
+    const t = (text || "").toLowerCase();
+    if (t.includes("ufc") || t.includes("mma")) return LOGOS.ufc;
+    if (t.includes("nfl")) return LOGOS.nfl;
+    if (t.includes("nba")) return LOGOS.nba;
+    if (t.includes("nhl")) return LOGOS.nhl;
+    if (t.includes("mlb")) return LOGOS.mlb;
+    if (t.includes("boxing")) return LOGOS.boxing;
+    if (t.includes("soccer") || t.includes("football") || t.includes("premier") || t.includes("liga") || t.includes("champions")) return LOGOS.soccer;
+    return LOGOS.nfl;
+  }
+
+  function upgradeCategoryCards() {
+    document.querySelectorAll(".cs-cat-card").forEach(card => {
+      const iconBox = card.querySelector(".cs-cat-icon");
+      const title = card.querySelector("h3");
+      if (iconBox && title && !iconBox.querySelector("img")) {
+        iconBox.innerHTML = '<img src="' + getLogo(title.textContent) + '" alt="logo" loading="lazy" />';
+      }
+    });
+  }
+
+  function upgradeMatchCards() {
+    const cards = document.querySelectorAll(".match-card, .card, [data-match-id], #matches > div, #matches-grid > div, .matches-grid > div");
+    cards.forEach(card => {
+      if (card.dataset.csLogoDone || card.classList.contains("cs-cat-card")) return;
+      if (!card.textContent || card.textContent.trim().length < 5) return;
+      card.dataset.csLogoDone = "1";
+      const img = document.createElement("img");
+      img.className = "cs-match-logo";
+      img.src = getLogo(card.textContent);
+      img.alt = "league logo";
+      img.loading = "lazy";
+      card.insertBefore(img, card.firstChild);
+      card.classList.add("cs-card-with-logo");
+    });
+  }
+
+  function runAll() {
+    upgradeCategoryCards();
+    upgradeMatchCards();
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    runAll();
+    const obs = new MutationObserver(() => runAll());
+    obs.observe(document.body, { childList: true, subtree: true });
+  });
+})();
+</script>
+<!-- /CS_LOGOS_MOD -->
 </body>
 </html>
