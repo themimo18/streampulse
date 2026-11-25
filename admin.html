@@ -285,7 +285,7 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
 
         const dd = String(d.getDate()).padStart(2, "0");
         const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const yy = String(d.getFullYear()).slice(-2);
+        const yy = String(d.getFullYear());
         const hh = String(d.getHours()).padStart(2, "0");
         const mi = String(d.getMinutes()).padStart(2, "0");
         const timeStr = dd + "/" + mm + "/" + yy + " " + hh + ":" + mi + " GMT";
@@ -317,14 +317,17 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
 }
 
 async function loadAll() {
-      const { data: ms } = await sb.from("us_matches").select("*").order("id", { ascending: false });
+      const { data: _rawMs } = await sb.from("us_matches").select("*").order("id", { ascending: false });
+  window.ADMIN_MATCHES = _rawMs || [];
+  adminRenderSportFilters(window.ADMIN_MATCHES);
+  const ms = adminFilterMatches(window.ADMIN_MATCHES);
       document.getElementById("matches-list").innerHTML = (ms || []).length ? (ms || []).map(m => `
         <div class="p-3 bg-slate-900 border ${m.stream_url ? "border-emerald-500/40" : "border-slate-800"} rounded-xl space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div>
               <span class="px-2 py-0.5 rounded bg-slate-800 text-pink-400 text-[11px] font-bold mr-1">${m.league}</span>
               <span class="font-bold text-white">${m.title}</span>
-              <span class="text-xs text-slate-400 ml-1">(${m.match_time})</span>
+              <span class="text-xs text-slate-400 ml-1">(${adminFormatDateTime(m.match_time)})</span>
               ${m.is_live ? "🔴" : ""}
               ${m.stream_url ? '<span class="text-emerald-400 text-xs font-bold ml-2">✓ Link Ready</span>' : '<span class="text-amber-400 text-xs ml-2">No link yet</span>'}
             </div>
@@ -378,5 +381,92 @@ async function loadAll() {
 
     loadAll();
   </script>
+<!-- ADMIN_FILTER_HELPER -->
+<script>
+window.adminSportFilter = "all";
+
+function adminFormatDateTime(mt) {
+  let s = String(mt || "TBA").trim();
+  s = s.replace(/^(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1");
+  s = s.replace(/^(\d{2})\/(\d{2})\/(\d{2})(?=\s|$)/, "$1/$2/20$3");
+  return s;
+}
+
+function adminGetCategory(m) {
+  const txt = (String(m.sport || "") + " " + String(m.league || "")).toLowerCase();
+  if (txt.includes("ufc") || txt.includes("mma") || txt.includes("fight") || txt.includes("boxing")) return "ufc";
+  if (txt.includes("nfl") || txt.includes("american-football") || txt.includes("american football")) return "nfl";
+  if (txt.includes("nba") || txt.includes("basketball")) return "nba";
+  if (txt.includes("nhl") || txt.includes("hockey")) return "nhl";
+  if (txt.includes("mlb") || txt.includes("baseball")) return "mlb";
+  if (txt.includes("soccer") || txt.includes("football") || txt.includes("premier") || txt.includes("liga") || txt.includes("champions") || txt.includes("serie") || txt.includes("bundesliga") || txt.includes("ligue")) return "soccer";
+  return "other";
+}
+
+function adminFilterMatches(list) {
+  if (window.adminSportFilter === "all") return list;
+  return list.filter(m => adminGetCategory(m) === window.adminSportFilter);
+}
+
+function setAdminSportFilter(cat) {
+  window.adminSportFilter = cat;
+  if (typeof loadAll === "function") loadAll();
+}
+
+function adminRenderSportFilters(list) {
+  const container = document.getElementById("matches-list");
+  if (!container) return;
+  let bar = document.getElementById("admin-sport-filters");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "admin-sport-filters";
+    bar.className = "flex flex-wrap items-center gap-2 mb-4";
+    container.parentNode.insertBefore(bar, container);
+  }
+  const counts = { all: list.length, soccer: 0, nba: 0, nfl: 0, ufc: 0, nhl: 0 };
+  list.forEach(m => {
+    const c = adminGetCategory(m);
+    if (counts[c] !== undefined) counts[c]++;
+  });
+  const cats = [
+    { id: "all", label: "All" },
+    { id: "soccer", label: "⚽ Soccer" },
+    { id: "nba", label: "🏀 NBA" },
+    { id: "nfl", label: "🏈 NFL" },
+    { id: "ufc", label: "🥊 UFC" },
+    { id: "nhl", label: "🏒 NHL" }
+  ];
+  bar.innerHTML = cats.map(c => {
+    const active = window.adminSportFilter === c.id;
+    const cls = active
+      ? "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-teal-500 text-slate-950 transition"
+      : "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+    return '<button onclick="setAdminSportFilter(\'' + c.id + '\')" class="' + cls + '">' + c.label + ' (' + counts[c.id] + ')</button>';
+  }).join("");
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("div, section").forEach(el => {
+    if (
+      el.isConnected &&
+      el.textContent &&
+      el.textContent.includes("Today's Matches (Auto-Fetch)") &&
+      !el.textContent.includes("STREAMPULSE ADMIN") &&
+      !el.querySelector("#matches-list")
+    ) {
+      let target = el;
+      while (
+        target.parentElement &&
+        target.parentElement.tagName !== "BODY" &&
+        !target.parentElement.textContent.includes("STREAMPULSE ADMIN")
+      ) {
+        target = target.parentElement;
+      }
+      target.remove();
+    }
+  });
+});
+</script>
+<!-- /ADMIN_FILTER_HELPER -->
 </body>
 </html>
