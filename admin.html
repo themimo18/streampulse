@@ -283,11 +283,11 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
         const dayDiff = Math.round((ev0 - today0) / 86400000);
         if (dayDiff < -1 || dayDiff > 1) continue;
 
-        const dd = String(d.getDate()).padStart(2, "0");
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const yy = String(d.getFullYear());
-        const hh = String(d.getHours()).padStart(2, "0");
-        const mi = String(d.getMinutes()).padStart(2, "0");
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const yy = String(d.getUTCFullYear());
+        const hh = String(d.getUTCHours()).padStart(2, "0");
+        const mi = String(d.getUTCMinutes()).padStart(2, "0");
         const timeStr = dd + "/" + mm + "/" + yy + " " + hh + ":" + mi + " GMT";
         const isLive = ev.status?.type?.state === "in";
 
@@ -381,6 +381,7 @@ async function loadAll() {
 
     loadAll();
   </script>
+
 <!-- ADMIN_FILTER_HELPER -->
 <script>
 window.adminSportFilter = "all";
@@ -389,7 +390,42 @@ function adminFormatDateTime(mt) {
   let s = String(mt || "TBA").trim();
   s = s.replace(/^(\d{4})-(\d{2})-(\d{2})/, "$3/$2/$1");
   s = s.replace(/^(\d{2})\/(\d{2})\/(\d{2})(?=\s|$)/, "$1/$2/20$3");
+  if (s !== "TBA" && !s.toUpperCase().includes("GMT")) s += " GMT";
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+  if (m) {
+    const ts = Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]);
+    const diffMin = Math.round((ts - Date.now()) / 60000);
+    if (diffMin > 0 && diffMin <= 1440) {
+      const h = Math.floor(diffMin / 60);
+      const min = diffMin % 60;
+      s += " • ⏳ in " + (h ? h + "h " : "") + min + "m";
+    } else if (diffMin <= 0 && diffMin >= -120) {
+      s += " • 🔴 Started";
+    }
+  }
   return s;
+}
+
+function adminStartGmtClock() {
+  const container = document.getElementById("matches-list");
+  if (!container || document.getElementById("admin-gmt-clock")) return;
+  const clock = document.createElement("div");
+  clock.id = "admin-gmt-clock";
+  clock.className = "mb-3 px-4 py-2.5 rounded-xl bg-slate-900 border border-teal-500/40 flex items-center justify-between gap-2 text-xs sm:text-sm font-bold text-teal-300";
+  const filters = document.getElementById("admin-sport-filters");
+  container.parentNode.insertBefore(clock, filters || container);
+  const tick = () => {
+    const now = new Date();
+    const dd = String(now.getUTCDate()).padStart(2, "0");
+    const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const yyyy = now.getUTCFullYear();
+    const hh = String(now.getUTCHours()).padStart(2, "0");
+    const mi = String(now.getUTCMinutes()).padStart(2, "0");
+    const ss = String(now.getUTCSeconds()).padStart(2, "0");
+    clock.innerHTML = '<span>🕒 Current GMT Time</span><span class="font-mono text-white">' + dd + '/' + mm + '/' + yyyy + ' ' + hh + ':' + mi + ':' + ss + ' GMT</span>';
+  };
+  tick();
+  setInterval(tick, 1000);
 }
 
 function adminGetCategory(m) {
@@ -423,6 +459,7 @@ function adminRenderSportFilters(list) {
     bar.className = "flex flex-wrap items-center gap-2 mb-4";
     container.parentNode.insertBefore(bar, container);
   }
+  adminStartGmtClock();
   const counts = { all: list.length, soccer: 0, nba: 0, nfl: 0, ufc: 0, nhl: 0 };
   list.forEach(m => {
     const c = adminGetCategory(m);
@@ -446,6 +483,7 @@ function adminRenderSportFilters(list) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  adminStartGmtClock();
   document.querySelectorAll("div, section").forEach(el => {
     if (
       el.isConnected &&
