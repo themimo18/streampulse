@@ -253,60 +253,70 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
     }
 
     async function autoFetchMatches() {
-      const btn = document.getElementById("btn-fetch");
-      btn.disabled = true;
-      btn.textContent = "⏳ Fetching...";
-      setStatus("Fetching today's matches from ESPN...");
+  const btn = document.getElementById("btn-fetch");
+  btn.disabled = true;
+  btn.textContent = "⏳ Fetching...";
+  setStatus("Fetching Yesterday / Today / Tomorrow from ESPN...");
 
-      const { data: existing } = await sb.from("us_matches").select("id, title");
-      const existingMap = new Map((existing || []).map(m => [m.title, m.id]));
+  const { data: existing } = await sb.from("us_matches").select("id, title");
+  const existingMap = new Map((existing || []).map(m => [m.title, m.id]));
 
-      let added = 0;
-      for (const feed of ESPN_FEEDS) {
-        try {
-          const nowD = new Date();
-      const fmtD = dt => dt.getFullYear() + String(dt.getMonth()+1).padStart(2,"0") + String(dt.getDate()).padStart(2,"0");
-      const yest = new Date(nowD.getTime() - 86400000);
-      const tom = new Date(nowD.getTime() + 86400000);
-      const range = fmtD(yest) + "-" + fmtD(tom);
+  const nowD = new Date();
+  const today0 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate()).getTime();
+  const fmtD = dt => dt.getFullYear() + String(dt.getMonth() + 1).padStart(2, "0") + String(dt.getDate()).padStart(2, "0");
+  const range = fmtD(new Date(today0 - 86400000)) + "-" + fmtD(new Date(today0 + 86400000));
+
+  let added = 0;
+  let updated = 0;
+  for (const feed of ESPN_FEEDS) {
+    try {
       const sep = feed.url.includes("?") ? "&" : "?";
-      const res = await fetch(feed.url + sep + "dates=" + range);
-          const data = await res.json();
-          const events = data.events || [];
-          for (const ev of events) {
-            const title = ev.shortName || ev.name;
-            if (!title) continue;
-            const d = new Date(ev.date);
-          const today0 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate()).getTime();
-          const ev0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-          const dayDiff = Math.round((ev0 - today0) / 86400000);
-          if (dayDiff < -1 || dayDiff > 1) continue;
-            const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yy = String(d.getFullYear()).slice(-2);
-      const timeStr = dd + "/" + mm + "/" + yy + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) + " GMT";
-            const isLive = ev.status?.type?.state === "in";
-            if (existingMap.has(title)) {
-            await sb.from("us_matches").update({ match_time: timeStr, is_live: isLive }).eq("id", existingMap.get(title));
-          } else {
-            await sb.from("us_matches").insert([{
-              title, sport: feed.sport, league: feed.league,
-              match_time: timeStr, is_live: isLive, stream_url: "", server2_url: ""
-            }]);
+      let res = await fetch(feed.url + sep + "dates=" + range);
+      if (!res.ok) res = await fetch(feed.url);
+      const data = await res.json();
+      const events = data.events || [];
+      for (const ev of events) {
+        const title = ev.shortName || ev.name;
+        if (!title) continue;
+        const d = new Date(ev.date);
+        const ev0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const dayDiff = Math.round((ev0 - today0) / 86400000);
+        if (dayDiff < -1 || dayDiff > 1) continue;
+
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yy = String(d.getFullYear()).slice(-2);
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        const timeStr = dd + "/" + mm + "/" + yy + " " + hh + ":" + mi + " GMT";
+        const isLive = ev.status?.type?.state === "in";
+
+        if (existingMap.has(title)) {
+          await sb.from("us_matches").update({ match_time: timeStr, is_live: isLive }).eq("id", existingMap.get(title));
+          updated++;
+        } else {
+          const { error } = await sb.from("us_matches").insert([{
+            title, sport: feed.sport, league: feed.league,
+            match_time: timeStr, is_live: isLive, stream_url: "", server2_url: ""
+          }]);
+          if (!error) {
             existingMap.set(title, true);
-          }
             added++;
           }
-        } catch (e) {}
+        }
       }
-
-      btn.disabled = false;
-      btn.textContent = "🔄 Auto-Fetch Today's Matches";
-      setStatus(added > 0 ? `✅ Added ${added} new matches! Now paste your embed links below.` : "✅ Schedule is already up to date.");
-      loadAll();
+    } catch (e) {
+      console.error("Feed error:", feed.league, e);
     }
+  }
 
-    async function loadAll() {
+  btn.disabled = false;
+  btn.textContent = "🔄 Auto-Fetch Today's Matches";
+  setStatus(added || updated ? "✅ Added " + added + " / Updated " + updated + " matches!" : "⚠️ 0 matches found from ESPN.");
+  loadAll();
+}
+
+async function loadAll() {
       const { data: ms } = await sb.from("us_matches").select("*").order("id", { ascending: false });
       document.getElementById("matches-list").innerHTML = (ms || []).length ? (ms || []).map(m => `
         <div class="p-3 bg-slate-900 border ${m.stream_url ? "border-emerald-500/40" : "border-slate-800"} rounded-xl space-y-2">
