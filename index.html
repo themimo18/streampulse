@@ -321,7 +321,12 @@ function csJumpToSport(sport) {
       (currentDay === "all" || csGetMatchDay(m) === currentDay) &&
       ((m.title || "").toLowerCase().includes(q) || (m.league || "").toLowerCase().includes(q))
     );
-        list.innerHTML = filtered.length ? filtered.map(m => `
+        filtered.sort((a, b) => {
+      if (a.is_live && !b.is_live) return -1;
+      if (!a.is_live && b.is_live) return 1;
+      return csGetSortTs(a) - csGetSortTs(b);
+    });
+    list.innerHTML = filtered.length ? filtered.map(m => `
           <div onclick="openMatch(${MATCHES.indexOf(m)})"
                class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-fuchsia-500/60 cursor-pointer transition flex items-center justify-between gap-3">
             <div>
@@ -529,6 +534,21 @@ function csGetMatchDay(m) {
   if (diff < 0) return "yesterday";
   if (diff > 0) return "tomorrow";
   return "today";
+}
+
+function csGetSortTs(m) {
+  const s = String(m.match_time || "").trim();
+  const parts = s.split(" ");
+  let dMs = csParseDateFromTime(s);
+  if (dMs === null) {
+    const now = new Date();
+    dMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  }
+  const timePart = parts.find(x => x.includes(":")) || "23:59";
+  const hm = timePart.split(":");
+  const hh = parseInt(hm[0], 10) || 0;
+  const mm = parseInt(hm[1], 10) || 0;
+  return dMs + (hh * 3600000) + (mm * 60000);
 }
 
 function csFormatDateTime(m) {
