@@ -684,146 +684,209 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 <!-- /CS_DAY_AND_LOGOS -->
+
 <!-- CS_TEAM_LOGOS -->
 <script>
-(function csInitTeamLogos(FEEDS) {
-  const CACHE_KEY = "cs_espn_logos_v2_" + new Date().toISOString().slice(0, 10);
-  let logoMap = {};
-  let scheduled = false;
+(function csInitTeamLogos(FEEDS, SECTION_LOGOS, UFC_FALLBACK) {
+    const CACHE_KEY = "cs_espn_logos_v2_" + new Date().toISOString().slice(0, 10);
+    let logoMap = {};
+    let scheduled = false;
 
-  function norm(s) {
-    return String(s || "")
-      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toUpperCase();
-  }
+    function norm(s) {
+      return String(s || "")
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+    }
 
-  function esc(s) {
-    return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  }
+    function esc(s) {
+      return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
 
-  function extractTeam(c) {
-    const t = c && c.team ? c.team : null;
-    const a = c && c.athlete ? c.athlete : null;
-    return {
-      name: (t && (t.shortDisplayName || t.displayName || t.name)) || (a && (a.shortName || a.displayName)) || "",
-      abbr: (t && t.abbreviation) || "",
-      logo: (t && (t.logo || (t.logos && t.logos[0] && t.logos[0].href))) || (a && ((a.headshot && a.headshot.href) || (a.flag && a.flag.href))) || ""
-    };
-  }
+    function extractTeam(c) {
+      const t = c && c.team ? c.team : null;
+      const a = c && c.athlete ? c.athlete : null;
+      return {
+        name: (t && (t.shortDisplayName || t.displayName || t.name)) || (a && (a.shortName || a.displayName)) || "",
+        abbr: (t && t.abbreviation) || "",
+        logo: (t && (t.logo || (t.logos && t.logos[0] && t.logos[0].href))) || (a && ((a.headshot && a.headshot.href) || (a.flag && a.flag.href))) || ""
+      };
+    }
 
-  function applyLogos() {
-    if (!Object.keys(logoMap).length) return;
-    const nodes = document.querySelectorAll("div, span, h1, h2, h3, h4, p, strong");
-    nodes.forEach(el => {
-      if (el.dataset.csLogoDone || el.closest("[data-cs-logo-done]")) return;
-      if (el.querySelector("input, button, select, textarea, iframe, img")) return;
-      const key = norm(el.textContent);
-      if (!key || !logoMap[key]) return;
-      for (const ch of el.children) {
-        if (norm(ch.textContent) === key) return;
-      }
-      const info = logoMap[key];
-      el.dataset.csLogoDone = "1";
-      el.classList.remove("truncate", "whitespace-nowrap");
-      const prev = el.previousElementSibling;
-      if (prev && !prev.querySelector("button, a, input, img") && prev.textContent.trim().length > 0 && norm(prev.textContent) === "") {
-        prev.style.display = "none";
-      }
-      const imgA = info.awayLogo
-        ? '<img src="' + esc(info.awayLogo) + '" alt="' + esc(info.awayName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
-        : "";
-      const imgH = info.homeLogo
-        ? '<img src="' + esc(info.homeLogo) + '" alt="' + esc(info.homeName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
-        : "";
-      el.innerHTML =
-        '<span class="inline-flex items-center flex-wrap gap-x-2 gap-y-1">' +
-          '<span class="inline-flex items-center gap-1.5">' + imgA + '<span>' + esc(info.awayName) + '</span></span>' +
-          '<span class="text-[11px] font-bold text-slate-400 uppercase">vs</span>' +
-          '<span class="inline-flex items-center gap-1.5">' + imgH + '<span>' + esc(info.homeName) + '</span></span>' +
-        '</span>';
-    });
-  }
-
-  function scheduleApply() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      applyLogos();
-    });
-  }
-
-  async function loadLogos() {
-    try {
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && parsed.ts && Date.now() - parsed.ts < 900000 && parsed.map) {
-          logoMap = parsed.map;
-          scheduleApply();
+    function hideLeadingSportIcon(el) {
+      let cur = el;
+      for (let depth = 0; depth < 2 && cur; depth++) {
+        const prev = cur.previousElementSibling;
+        if (
+          prev &&
+          !prev.dataset.csLogoDone &&
+          !prev.querySelector("button, a, input") &&
+          !/[a-zA-Z0-9]/.test(prev.textContent || "")
+        ) {
+          prev.style.display = "none";
           return;
         }
-      }
-    } catch (e) {}
-
-    const now = new Date();
-    const today0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    const fmt = ms => {
-      const dt = new Date(ms);
-      return dt.getUTCFullYear() + String(dt.getUTCMonth() + 1).padStart(2, "0") + String(dt.getUTCDate()).padStart(2, "0");
-    };
-    const range = fmt(today0 - 86400000) + "-" + fmt(today0 + 2 * 86400000);
-
-    const map = {};
-    await Promise.allSettled(FEEDS.map(async feed => {
-      try {
-        const sep = feed.url.includes("?") ? "&" : "?";
-        let res = await fetch(feed.url + sep + "dates=" + range);
-        let data = res.ok ? await res.json() : { events: [] };
-        let events = data.events || [];
-        if (!events.length) {
-          res = await fetch(feed.url);
-          data = res.ok ? await res.json() : { events: [] };
-          events = data.events || [];
+        if (cur.previousSibling && cur.previousSibling.nodeType === 3 && !/[a-zA-Z0-9]/.test(cur.previousSibling.textContent || "")) {
+          cur.previousSibling.textContent = "";
         }
-        events.forEach(ev => {
-          const comps = (ev.competitions && ev.competitions[0] && ev.competitions[0].competitors) || [];
-          if (comps.length < 2) return;
-          const awayC = comps.find(c => c.homeAway === "away") || comps[1];
-          const homeC = comps.find(c => c.homeAway === "home") || comps[0];
-          const away = extractTeam(awayC);
-          const home = extractTeam(homeC);
-          if (!away.name || !home.name) return;
-          const entry = { awayName: away.name, awayLogo: away.logo, homeName: home.name, homeLogo: home.logo };
-          const keys = [norm(ev.shortName), norm(ev.name)];
-          if (ev.shortName && ev.shortName.includes("@")) keys.push(norm(ev.shortName.replace("@", "VS")));
-          if (away.abbr && home.abbr) {
-            keys.push(norm(away.abbr + " @ " + home.abbr));
-            keys.push(norm(away.abbr + " VS " + home.abbr));
+        cur = cur.parentElement;
+      }
+    }
+
+    function applySectionLogos() {
+      const leaves = document.querySelectorAll("div, p, span");
+      leaves.forEach(sub => {
+        if (sub.children.length > 0) return;
+        if (sub.textContent.trim().toLowerCase() !== "click to view all games") return;
+
+        let card = sub.parentElement;
+        for (let step = 0; step < 3 && card; step++) {
+          if (card.dataset.csSecLogoDone) return;
+          const txt = card.textContent.toLowerCase();
+          if (txt.split("click to view all games").length > 2) break;
+
+          let key = null;
+          if (txt.includes("nfl")) key = "nfl";
+          else if (txt.includes("nba")) key = "nba";
+          else if (txt.includes("soccer")) key = "soccer";
+          else if (txt.includes("nhl")) key = "nhl";
+          else if (txt.includes("boxing")) key = "boxing";
+          else if (txt.includes("ufc") || txt.includes("mma")) key = "ufc";
+          else if (txt.includes("mlb")) key = "mlb";
+
+          if (key && SECTION_LOGOS[key]) {
+            const iconBox = [...card.querySelectorAll("div, span")].find(box =>
+              !box.contains(sub) &&
+              !box.querySelector("img") &&
+              !/[a-zA-Z0-9]/.test(box.textContent || "") &&
+              (box.textContent.trim().length > 0 || box.querySelector("svg"))
+            );
+            if (iconBox) {
+              card.dataset.csSecLogoDone = "1";
+              iconBox.style.display = "flex";
+              iconBox.style.alignItems = "center";
+              iconBox.style.justifyContent = "center";
+              const fallbackAttr = key === "ufc" ? ' onerror="this.onerror=null;this.src=\'' + esc(UFC_FALLBACK) + '\'"' : "";
+              iconBox.innerHTML = '<img src="' + esc(SECTION_LOGOS[key]) + '" alt="' + key.toUpperCase() + '" class="w-8 h-8 object-contain drop-shadow"' + fallbackAttr + '>';
+              return;
+            }
           }
-          keys.forEach(k => { if (k) map[k] = entry; });
-        });
+          card = card.parentElement;
+        }
+      });
+    }
+
+    function applyLogos() {
+      applySectionLogos();
+      if (!Object.keys(logoMap).length) return;
+      const nodes = document.querySelectorAll("div, span, h1, h2, h3, h4, p, strong");
+      nodes.forEach(el => {
+        if (el.dataset.csLogoDone || el.closest("[data-cs-logo-done]")) return;
+        if (el.querySelector("input, button, select, textarea, iframe, img")) return;
+        const key = norm(el.textContent);
+        if (!key || !logoMap[key]) return;
+        for (const ch of el.children) {
+          if (norm(ch.textContent) === key) return;
+        }
+        const info = logoMap[key];
+        el.dataset.csLogoDone = "1";
+        el.classList.remove("truncate", "whitespace-nowrap");
+        hideLeadingSportIcon(el);
+        const imgA = info.awayLogo
+          ? '<img src="' + esc(info.awayLogo) + '" alt="' + esc(info.awayName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
+          : "";
+        const imgH = info.homeLogo
+          ? '<img src="' + esc(info.homeLogo) + '" alt="' + esc(info.homeName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
+          : "";
+        el.innerHTML =
+          '<span class="inline-flex items-center flex-wrap gap-x-2 gap-y-1">' +
+            '<span class="inline-flex items-center gap-1.5">' + imgA + '<span>' + esc(info.awayName) + '</span></span>' +
+            '<span class="text-[11px] font-bold text-slate-400 uppercase">vs</span>' +
+            '<span class="inline-flex items-center gap-1.5">' + imgH + '<span>' + esc(info.homeName) + '</span></span>' +
+          '</span>';
+      });
+    }
+
+    function scheduleApply() {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        applyLogos();
+      });
+    }
+
+    async function loadLogos() {
+      applySectionLogos();
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.ts && Date.now() - parsed.ts < 900000 && parsed.map) {
+            logoMap = parsed.map;
+            scheduleApply();
+            return;
+          }
+        }
       } catch (e) {}
-    }));
 
-    logoMap = map;
-    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch (e) {}
-    scheduleApply();
-  }
+      const now = new Date();
+      const today0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const fmt = ms => {
+        const dt = new Date(ms);
+        return dt.getUTCFullYear() + String(dt.getUTCMonth() + 1).padStart(2, "0") + String(dt.getUTCDate()).padStart(2, "0");
+      };
+      const range = fmt(today0 - 86400000) + "-" + fmt(today0 + 2 * 86400000);
 
-  const obs = new MutationObserver(scheduleApply);
-  const start = () => {
-    if (document.body) obs.observe(document.body, { childList: true, subtree: true });
-    loadLogos();
-  };
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
-})([{"url":"https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"}]);
+      const map = {};
+      await Promise.allSettled(FEEDS.map(async feed => {
+        try {
+          const sep = feed.url.includes("?") ? "&" : "?";
+          let res = await fetch(feed.url + sep + "dates=" + range);
+          let data = res.ok ? await res.json() : { events: [] };
+          let events = data.events || [];
+          if (!events.length) {
+            res = await fetch(feed.url);
+            data = res.ok ? await res.json() : { events: [] };
+            events = data.events || [];
+          }
+          events.forEach(ev => {
+            const comps = (ev.competitions && ev.competitions[0] && ev.competitions[0].competitors) || [];
+            if (comps.length < 2) return;
+            const awayC = comps.find(c => c.homeAway === "away") || comps[1];
+            const homeC = comps.find(c => c.homeAway === "home") || comps[0];
+            const away = extractTeam(awayC);
+            const home = extractTeam(homeC);
+            if (!away.name || !home.name) return;
+            const entry = { awayName: away.name, awayLogo: away.logo, homeName: home.name, homeLogo: home.logo };
+            const keys = [norm(ev.shortName), norm(ev.name)];
+            if (ev.shortName && ev.shortName.includes("@")) keys.push(norm(ev.shortName.replace("@", "VS")));
+            if (away.abbr && home.abbr) {
+              keys.push(norm(away.abbr + " @ " + home.abbr));
+              keys.push(norm(away.abbr + " VS " + home.abbr));
+            }
+            keys.forEach(k => { if (k) map[k] = entry; });
+          });
+        } catch (e) {}
+      }));
+
+      logoMap = map;
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), map })); } catch (e) {}
+      scheduleApply();
+    }
+
+    const obs = new MutationObserver(scheduleApply);
+    const start = () => {
+      if (document.body) obs.observe(document.body, { childList: true, subtree: true });
+      loadLogos();
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start);
+    } else {
+      start();
+    }
+  })([{"url":"https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"},{"url":"https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"}], {"nfl":"https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png","nba":"https://a.espncdn.com/i/teamlogos/leagues/500/nba.png","soccer":"https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png","nhl":"https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png","mlb":"https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png","ufc":"https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png","boxing":"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cpath%20d%3D%22M18%2014c-6%200-10%205-10%2012v10c0%208%205%2014%2013%2015v5c0%202%202%204%204%204h18c2%200%204-2%204-4v-5c5-2%209-7%209-14V24c0-6-4-10-10-10H18z%22%20fill%3D%22%23dc2626%22%20stroke%3D%22%23fca5a5%22%20stroke-width%3D%222.5%22%2F%3E%3Cpath%20d%3D%22M14%2026c0-4%203-7%207-7h10c3%200%205%202%205%205v3c0%203-2%205-5%205H21c-4%200-7-2-7-6z%22%20fill%3D%22%23ef4444%22%20stroke%3D%22%23fee2e2%22%20stroke-width%3D%222%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2248%22%20width%3D%2224%22%20height%3D%228%22%20rx%3D%222%22%20fill%3D%22%23f8fafc%22%2F%3E%3Cline%20x1%3D%2225%22%20y1%3D%2252%22%20x2%3D%2239%22%20y2%3D%2252%22%20stroke%3D%22%23dc2626%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E"}, "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%2056%22%3E%3Cpolygon%20points%3D%2218%2C4%20102%2C4%20116%2C18%20116%2C38%20102%2C52%2018%2C52%204%2C38%204%2C18%22%20fill%3D%22%2318181b%22%20stroke%3D%22%23dc2626%22%20stroke-width%3D%224%22%2F%3E%3Ctext%20x%3D%2260%22%20y%3D%2238%22%20text-anchor%3D%22middle%22%20font-family%3D%22Arial%20Black%2CImpact%2Csans-serif%22%20font-weight%3D%22900%22%20font-style%3D%22italic%22%20font-size%3D%2230%22%20fill%3D%22%23ef4444%22%20letter-spacing%3D%221%22%3EUFC%3C%2Ftext%3E%3C%2Fsvg%3E");
 </script>
 <!-- /CS_TEAM_LOGOS -->
 </body>
