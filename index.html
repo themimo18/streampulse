@@ -511,9 +511,8 @@ function csGetMatchDay(m) {
   const dayMs = 86400000;
   let matchDate = null;
 
-  // Try parsing DD/MM/YY from m.match_time
-  const mt = m.match_time || "";
-  const dMatch = mt.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  const mt = String(m.match_time || "");
+  const dMatch = mt.match(new RegExp("([0-9]{1,2})/([0-9]{1,2})/([0-9]{2,4})"));
   if (dMatch) {
     const dd = parseInt(dMatch[1], 10);
     const mm = parseInt(dMatch[2], 10) - 1;
@@ -522,10 +521,12 @@ function csGetMatchDay(m) {
     matchDate = new Date(yy, mm, dd).getTime();
   } else if (m.created_at) {
     const c = new Date(m.created_at);
-    matchDate = new Date(c.getFullYear(), c.getMonth(), c.getDate()).getTime();
+    if (!isNaN(c.getTime())) {
+      matchDate = new Date(c.getFullYear(), c.getMonth(), c.getDate()).getTime();
+    }
   }
 
-  if (matchDate === null) return "today";
+  if (matchDate === null || isNaN(matchDate)) return "today";
   const diff = Math.round((matchDate - todayStart) / dayMs);
   if (diff < 0) return "yesterday";
   if (diff > 0) return "tomorrow";
