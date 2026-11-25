@@ -310,6 +310,7 @@ function csJumpToSport(sport) {
     }
 
     function render() {
+  if (typeof csUpdateDayCounts === 'function') csUpdateDayCounts();
       renderSportsPills();
       const q = document.getElementById("search-input").value.toLowerCase();
       const list = document.getElementById("content-list");

@@ -98,7 +98,13 @@ async function tmLoadAll() {
   TM_MATCHES = [];
   await Promise.all(TM_FEEDS.map(async (f) => {
     try {
-      const res = await fetch(f.url);
+      const nowD = new Date();
+      const fmtD = dt => dt.getFullYear() + String(dt.getMonth()+1).padStart(2,"0") + String(dt.getDate()).padStart(2,"0");
+      const yest = new Date(nowD.getTime() - 86400000);
+      const tom = new Date(nowD.getTime() + 86400000);
+      const range = fmtD(yest) + "-" + fmtD(tom);
+      const sep = f.url.includes("?") ? "&" : "?";
+      const res = await fetch(f.url + sep + "dates=" + range);
       const data = await res.json();
       (data.events || []).forEach(ev => {
         const comp = ev.competitions && ev.competitions[0];
@@ -258,7 +264,13 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
       let added = 0;
       for (const feed of ESPN_FEEDS) {
         try {
-          const res = await fetch(feed.url);
+          const nowD = new Date();
+      const fmtD = dt => dt.getFullYear() + String(dt.getMonth()+1).padStart(2,"0") + String(dt.getDate()).padStart(2,"0");
+      const yest = new Date(nowD.getTime() - 86400000);
+      const tom = new Date(nowD.getTime() + 86400000);
+      const range = fmtD(yest) + "-" + fmtD(tom);
+      const sep = feed.url.includes("?") ? "&" : "?";
+      const res = await fetch(feed.url + sep + "dates=" + range);
           const data = await res.json();
           const events = data.events || [];
           for (const ev of events) {
