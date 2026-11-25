@@ -327,7 +327,7 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
             <input id="url-${m.id}" value="${m.stream_url || ""}" placeholder="Paste Server 1 Embed URL (https://...)" class="flex-1 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white" />
             <button onclick="saveLink(${m.id})" class="px-4 py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-xs font-bold text-white">Save Link</button>
           </div>
-        </div>`).join("") : '<p class="text-slate-500 text-sm py-4">No matches yet. Click "Auto-Fetch Today's Matches" above!</p>';
+        </div>`).join("") : '<p class="text-slate-500 text-sm py-4">No matches yet. Click "Auto-Fetch Today&apos;s Matches" above!</p>';
 
       const { data: cs } = await sb.from("us_channels").select("*").order("id", { ascending: false });
       document.getElementById("channels-list").innerHTML = (cs || []).map(c => `
