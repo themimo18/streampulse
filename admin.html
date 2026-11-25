@@ -45,6 +45,138 @@
 })();
 </script>
 <!-- /ADMIN_LOCK -->
+<!-- TODAY_MATCHES_WIDGET -->
+<style>
+  .tm-wrap { max-width: 1100px; margin: 20px auto; padding: 18px; background: #111827; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; font-family: system-ui, sans-serif; color: #f8fafc; }
+  .tm-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tm-head h2 { margin: 0; font-size: 18px; color: #2dd4bf; }
+  .tm-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tm-tab { padding: 6px 12px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #cbd5e1; font-size: 13px; cursor: pointer; font-weight: 600; }
+  .tm-tab.active { background: #2dd4bf; color: #0f172a; border-color: #2dd4bf; }
+  .tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+  .tm-card { background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .tm-top { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 700; }
+  .tm-badge { background: #0f172a; color: #38bdf8; padding: 2px 7px; border-radius: 6px; }
+  .tm-teams { font-size: 14px; font-weight: 700; color: #fff; }
+  .tm-btn { padding: 8px; border-radius: 8px; border: none; background: linear-gradient(90deg,#9333ea,#e879f9); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .tm-btn:hover { opacity: 0.9; }
+</style>
+
+<div class="tm-wrap" id="tm-widget">
+  <div class="tm-head">
+    <h2>📅 Today's Matches (Auto-Fetch)</h2>
+    <button class="tm-tab active" onclick="tmLoadAll()">🔄 Refresh</button>
+  </div>
+  <div class="tm-tabs" id="tm-tabs">
+    <button class="tm-tab active" onclick="tmFilter('ALL', this)">All</button>
+    <button class="tm-tab" onclick="tmFilter('NBA', this)">🏀 NBA</button>
+    <button class="tm-tab" onclick="tmFilter('NFL', this)">🏈 NFL</button>
+    <button class="tm-tab" onclick="tmFilter('Soccer', this)">⚽ Soccer</button>
+    <button class="tm-tab" onclick="tmFilter('NHL', this)">🏒 NHL</button>
+    <button class="tm-tab" onclick="tmFilter('UFC', this)">🥊 UFC</button>
+  </div>
+  <div class="tm-grid" id="tm-grid"><p style="color:#94a3b8">Loading today's matches...</p></div>
+</div>
+
+<script>
+let TM_MATCHES = [];
+let TM_CUR_FILTER = "ALL";
+
+const TM_FEEDS = [
+  { sport: "NBA", league: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" },
+  { sport: "NFL", league: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" },
+  { sport: "NHL", league: "NHL", url: "https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard" },
+  { sport: "Soccer", league: "Champions League", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard" },
+  { sport: "Soccer", league: "Premier League", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard" },
+  { sport: "Soccer", league: "La Liga", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard" },
+  { sport: "UFC", league: "UFC", url: "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard" }
+];
+
+async function tmLoadAll() {
+  const grid = document.getElementById("tm-grid");
+  grid.innerHTML = '<p style="color:#94a3b8">Fetching live schedule...</p>';
+  TM_MATCHES = [];
+  await Promise.all(TM_FEEDS.map(async (f) => {
+    try {
+      const res = await fetch(f.url);
+      const data = await res.json();
+      (data.events || []).forEach(ev => {
+        const comp = ev.competitions && ev.competitions[0];
+        const comps = (comp && comp.competitors) || [];
+        const home = comps.find(c => c.homeAway === "home") || comps[0];
+        const away = comps.find(c => c.homeAway === "away") || comps[1];
+        const homeName = (home && ((home.team && home.team.displayName) || (home.athlete && home.athlete.displayName))) || ev.name;
+        const awayName = (away && ((away.team && away.team.displayName) || (away.athlete && away.athlete.displayName))) || "";
+        const dt = new Date(ev.date);
+        const timeStr = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const status = (ev.status && ev.status.type && ev.status.type.shortDetail) || timeStr;
+        TM_MATCHES.push({
+          sport: f.sport,
+          league: f.league,
+          home: homeName,
+          away: awayName,
+          title: awayName ? (homeName + " vs " + awayName) : homeName,
+          time: timeStr,
+          status: status
+        });
+      });
+    } catch (e) {}
+  }));
+  tmRender();
+}
+
+function tmFilter(sport, btn) {
+  TM_CUR_FILTER = sport;
+  document.querySelectorAll("#tm-tabs .tm-tab").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  tmRender();
+}
+
+function tmRender() {
+  const grid = document.getElementById("tm-grid");
+  const list = TM_CUR_FILTER === "ALL" ? TM_MATCHES : TM_MATCHES.filter(m => m.sport === TM_CUR_FILTER);
+  if (!list.length) {
+    grid.innerHTML = '<p style="color:#94a3b8">No matches found for this category today.</p>';
+    return;
+  }
+  grid.innerHTML = list.map(m => {
+    const idx = TM_MATCHES.indexOf(m);
+    return '<div class="tm-card">' +
+      '<div class="tm-top"><span class="tm-badge">' + m.league + '</span><span>' + m.status + '</span></div>' +
+      '<div class="tm-teams">' + m.title + '</div>' +
+      '<button class="tm-btn" onclick="tmFill(' + idx + ')">+ Fill Form</button>' +
+    '</div>';
+  }).join("");
+}
+
+function tmFill(idx) {
+  const m = TM_MATCHES[idx];
+  if (!m) return;
+  const inputs = Array.from(document.querySelectorAll("input, select"));
+  const setVal = (regex, val) => {
+    const el = inputs.find(i => regex.test((i.id + " " + i.name + " " + (i.placeholder || "")).toLowerCase()));
+    if (el) {
+      el.value = val;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  };
+  setVal(/home|team1|team_a/, m.home);
+  setVal(/away|team2|team_b/, m.away);
+  setVal(/title|match|name/, m.title);
+  setVal(/league|comp/, m.league);
+  setVal(/sport|cat/, m.sport);
+  setVal(/time|hour|kickoff/, m.time);
+  const streamInput = inputs.find(i => /stream|url|embed|link/.test((i.id + " " + i.name + " " + (i.placeholder || "")).toLowerCase()));
+  if (streamInput) {
+    streamInput.scrollIntoView({ behavior: "smooth", block: "center" });
+    streamInput.focus();
+  }
+}
+
+window.addEventListener("DOMContentLoaded", tmLoadAll);
+</script>
+<!-- /TODAY_MATCHES_WIDGET -->
 
 
   <div class="max-w-5xl mx-auto space-y-6">
