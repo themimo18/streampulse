@@ -11,6 +11,40 @@
   <link rel="apple-touch-icon" href="favicon.svg" />
 </head>
 <body class="bg-[#0b0f19] text-slate-200 min-h-screen p-4 md:p-8 font-sans">
+<!-- ADMIN_LOCK -->
+<div id="admin-lock" style="position:fixed;inset:0;z-index:999999;background:#0b0f19;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;">
+  <div style="background:#131a2a;border:1px solid rgba(255,255,255,0.1);padding:28px;border-radius:14px;width:90%;max-width:340px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+    <h2 style="color:#fff;margin:0 0 8px;font-size:20px;">🔒 CrackStream Admin</h2>
+    <p style="color:#94a3b8;font-size:13px;margin:0 0 18px;">Enter password to continue</p>
+    <input id="admin-pass-input" type="password" placeholder="Password..." style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:15px;margin-bottom:12px;outline:none;" />
+    <button id="admin-pass-btn" style="width:100%;padding:12px;border-radius:8px;border:none;background:linear-gradient(90deg,#9333ea,#e879f9);color:#fff;font-weight:700;font-size:15px;cursor:pointer;">Unlock</button>
+    <p id="admin-pass-err" style="color:#ef4444;font-size:13px;margin:10px 0 0;display:none;">Wrong password!</p>
+  </div>
+</div>
+<script>
+(function(){
+  const PASS = "mimo2026";
+  const box = document.getElementById("admin-lock");
+  if (sessionStorage.getItem("cs_admin_ok") === "1") { box.remove(); return; }
+  const input = document.getElementById("admin-pass-input");
+  const btn = document.getElementById("admin-pass-btn");
+  const err = document.getElementById("admin-pass-err");
+  function check() {
+    if (input.value === PASS) {
+      sessionStorage.setItem("cs_admin_ok", "1");
+      box.remove();
+    } else {
+      err.style.display = "block";
+      input.value = "";
+      input.focus();
+    }
+  }
+  btn.onclick = check;
+  input.onkeydown = (e) => { if (e.key === "Enter") check(); };
+  input.focus();
+})();
+</script>
+<!-- /ADMIN_LOCK -->
   <div class="max-w-5xl mx-auto space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
       <h1 class="text-2xl font-black text-white">STREAM<span class="text-fuchsia-400">PULSE</span> ADMIN</h1>
