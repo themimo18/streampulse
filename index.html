@@ -293,7 +293,7 @@ function csJumpToSport(sport) {
     function switchTab(tab) {
       currentTab = tab;
       document.getElementById("btn-tab-schedule").className = "py-2.5 rounded-lg text-sm transition " + (tab === "schedule" ? "tab-active" : "tab-inactive");
-      document.getElementById("btn-tab-channels").className = "py-2.5 rounded-lg text-sm transition " + (tab === "channels" ? "tab-active" : "tab-inactive");
+      const cBtn = document.getElementById("btn-tab-channels"); if (cBtn) cBtn.className = "py-2.5 rounded-lg text-sm transition " + (tab === "channels" ? "tab-active" : "tab-inactive");
       document.getElementById("sport-filters").style.display = tab === "schedule" ? "flex" : "none";
       render();
     }
