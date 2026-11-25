@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrackStream Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="favicon.svg" />
+</head>
+<body class="bg-[#0b0f19] text-slate-200 min-h-screen p-4 md:p-8 font-sans">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <h1 class="text-2xl font-black text-white">STREAM<span class="text-fuchsia-400">PULSE</span> ADMIN</h1>
+      <div class="flex items-center gap-2">
+        <button id="btn-fetch" onclick="autoFetchMatches()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 text-xs font-bold text-white shadow-lg">
+          🔄 Auto-Fetch Today's Matches
+        </button>
+        <button onclick="clearOldMatches()" class="px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold">
+          🗑 Clear All
+        </button>
+        <a href="https://crackstream.watch/" target="_blank" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold">Live Site ↗</a>
+      </div>
+    </div>
+
+    <div id="status-bar" class="hidden p-3 rounded-lg bg-slate-900 border border-fuchsia-500/40 text-xs text-fuchsia-300"></div>
+
+    <!-- Matches List with Inline Link Input -->
+    <div class="space-y-2">
+      <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Today's Matches — Paste Stream Link & Save</h2>
+      <div id="matches-list" class="space-y-2"></div>
+    </div>
+
+    <!-- Add 24/7 Channel Form -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h2 class="text-lg font-bold text-pink-400">+ Add 24/7 TV Channel</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input id="c-name" placeholder="Channel Name (e.g. Sky Sports PL)" class="p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+        <input id="c-country" placeholder="Country (UK / USA)" class="p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+        <input id="c-cat" placeholder="Category (Football / NBA)" class="p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-sm" />
+        <input id="c-url" placeholder="Channel Embed URL (https://...)" class="p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-sm md:col-span-3" />
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="addChannel()" class="px-5 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 font-bold text-sm text-white">Add Channel</button>
+      </div>
+    </div>
+
+    <div id="channels-list" class="space-y-2"></div>
+  </div>
+
+  <script>
+    const sb = window.supabase.createClient("https://uwyljkxcfcqmteltjzxu.supabase.co", "sb_publishable_5E_ajIPbGSP0Kx9a_LJJXQ_xiG4Jahx");
+
+    const ESPN_FEEDS = [
+      { sport: "football", league: "Champions League", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard" },
+      { sport: "football", league: "Premier League", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard" },
+      { sport: "football", league: "La Liga", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard" },
+      { sport: "basketball", league: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" },
+      { sport: "american-football", league: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" },
+      { sport: "fight", league: "UFC", url: "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard" }
+    ];
+
+    function setStatus(msg) {
+      const el = document.getElementById("status-bar");
+      el.textContent = msg;
+      el.classList.remove("hidden");
+    }
+
+    async function autoFetchMatches() {
+      const btn = document.getElementById("btn-fetch");
+      btn.disabled = true;
+      btn.textContent = "⏳ Fetching...";
+      setStatus("Fetching today's matches from ESPN...");
+
+      const { data: existing } = await sb.from("us_matches").select("title");
+      const existingTitles = new Set((existing || []).map(m => m.title));
+
+      let added = 0;
+      for (const feed of ESPN_FEEDS) {
+        try {
+          const res = await fetch(feed.url);
+          const data = await res.json();
+          const events = data.events || [];
+          for (const ev of events) {
+            const title = ev.shortName || ev.name;
+            if (!title || existingTitles.has(title)) continue;
+            const d = new Date(ev.date);
+            const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) + " GMT";
+            const isLive = ev.status?.type?.state === "in";
+            await sb.from("us_matches").insert([{
+              title, sport: feed.sport, league: feed.league,
+              match_time: timeStr, is_live: isLive, stream_url: "", server2_url: ""
+            }]);
+            existingTitles.add(title);
+            added++;
+          }
+        } catch (e) {}
+      }
+
+      btn.disabled = false;
+      btn.textContent = "🔄 Auto-Fetch Today's Matches";
+      setStatus(added > 0 ? `✅ Added ${added} new matches! Now paste your embed links below.` : "✅ Schedule is already up to date.");
+      loadAll();
+    }
+
+    async function loadAll() {
+      const { data: ms } = await sb.from("us_matches").select("*").order("id", { ascending: false });
+      document.getElementById("matches-list").innerHTML = (ms || []).length ? (ms || []).map(m => `
+        <div class="p-3 bg-slate-900 border ${m.stream_url ? "border-emerald-500/40" : "border-slate-800"} rounded-xl space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <div>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-pink-400 text-[11px] font-bold mr-1">${m.league}</span>
+              <span class="font-bold text-white">${m.title}</span>
+              <span class="text-xs text-slate-400 ml-1">(${m.match_time})</span>
+              ${m.is_live ? "🔴" : ""}
+              ${m.stream_url ? '<span class="text-emerald-400 text-xs font-bold ml-2">✓ Link Ready</span>' : '<span class="text-amber-400 text-xs ml-2">No link yet</span>'}
+            </div>
+            <div class="flex gap-2">
+              <button onclick="toggleLive(${m.id}, ${!m.is_live})" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs">${m.is_live ? "Stop Live" : "Set Live"}</button>
+              <button onclick="delMatch(${m.id})" class="px-2.5 py-1 rounded bg-red-500/20 text-red-400 text-xs">Delete</button>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <input id="url-${m.id}" value="${m.stream_url || ""}" placeholder="Paste Server 1 Embed URL (https://...)" class="flex-1 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white" />
+            <button onclick="saveLink(${m.id})" class="px-4 py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 text-xs font-bold text-white">Save Link</button>
+          </div>
+        </div>`).join("") : '<p class="text-slate-500 text-sm py-4">No matches yet. Click "Auto-Fetch Today's Matches" above!</p>';
+
+      const { data: cs } = await sb.from("us_channels").select("*").order("id", { ascending: false });
+      document.getElementById("channels-list").innerHTML = (cs || []).map(c => `
+        <div class="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg text-sm">
+          <div><span class="font-bold text-white">${c.name}</span> <span class="text-xs text-slate-400">(${c.country})</span></div>
+          <button onclick="delChannel(${c.id})" class="px-2.5 py-1 rounded bg-red-500/20 text-red-400 text-xs">Delete</button>
+        </div>`).join("");
+    }
+
+    async function saveLink(id) {
+      const url = document.getElementById("url-" + id).value.trim();
+      await sb.from("us_matches").update({ stream_url: url }).eq("id", id);
+      setStatus("✅ Stream link saved! Live immediately on site.");
+      loadAll();
+    }
+
+    async function clearOldMatches() {
+      if (!confirm("Delete ALL matches from schedule?")) return;
+      await sb.from("us_matches").delete().neq("id", 0);
+      loadAll();
+    }
+
+    async function addChannel() {
+      const name = document.getElementById("c-name").value.trim();
+      const stream_url = document.getElementById("c-url").value.trim();
+      if (!name || !stream_url) return alert("Channel Name & URL required!");
+      await sb.from("us_channels").insert([{
+        name, country: document.getElementById("c-country").value.trim() || "UK",
+        category: document.getElementById("c-cat").value.trim() || "Sports", stream_url
+      }]);
+      document.getElementById("c-name").value = ""; document.getElementById("c-url").value = "";
+      loadAll();
+    }
+
+    async function toggleLive(id, val) { await sb.from("us_matches").update({ is_live: val }).eq("id", id); loadAll(); }
+    async function delMatch(id) { await sb.from("us_matches").delete().eq("id", id); loadAll(); }
+    async function delChannel(id) { await sb.from("us_channels").delete().eq("id", id); loadAll(); }
+
+    loadAll();
+  </script>
+</body>
+</html>
