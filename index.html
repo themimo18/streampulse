@@ -34,6 +34,53 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
   <link rel="apple-touch-icon" href="favicon.svg?v=2" />
   <script data-cfasync="false" src="https://capitalhospitals.org/1/a620255dc1e366da2c2ee233e2fbe7fd"></script>
+<!-- CS_UPGRADE_CSS -->
+<style>
+  .cs-notice-wrap { max-width: 980px; margin: 18px auto 14px; padding: 0 16px; text-align: center; }
+  .cs-notice-text { color: #e2e8f0; font-size: 14px; line-height: 1.6; margin-bottom: 10px; }
+  .cs-notice-text strong { color: #ffffff; }
+  .cs-tg-bar { font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 18px; }
+  .cs-tg-bar a { color: #a855f7; text-decoration: none; transition: color .2s; }
+  .cs-tg-bar a:hover { color: #c084fc; text-decoration: underline; }
+
+  .cs-cats-wrap { max-width: 980px; margin: 0 auto 28px; padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+  .cs-cat-card {
+    display: flex; align-items: center; gap: 18px;
+    background: linear-gradient(90deg, #1b4353 0%, #163744 100%);
+    border: 1px solid rgba(56, 189, 248, 0.16);
+    border-radius: 10px; padding: 14px 20px; cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    text-decoration: none; color: #fff;
+  }
+  .cs-cat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(45, 212, 191, 0.55);
+    background: linear-gradient(90deg, #215164 0%, #1b4454 100%);
+  }
+  .cs-cat-icon {
+    width: 44px; height: 44px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15, 23, 42, 0.45); border-radius: 10px; font-size: 24px;
+  }
+  .cs-cat-info h3 { margin: 0; font-size: 16px; font-weight: 700; color: #ffffff; }
+  .cs-cat-info p { margin: 2px 0 0; font-size: 13px; color: #cbd5e1; }
+
+  .cs-seo-box {
+    max-width: 980px; margin: 40px auto 32px; padding: 28px 26px;
+    background: #12141a; border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px; color: #cbd5e1; font-size: 14.5px; line-height: 1.75;
+  }
+  .cs-seo-box h2 {
+    color: #2dd4bf; font-size: 20px; font-weight: 700;
+    padding-bottom: 8px; margin: 26px 0 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.14);
+  }
+  .cs-seo-box h2:first-of-type { margin-top: 10px; }
+  .cs-seo-box h3 { color: #ffffff; font-size: 16px; font-weight: 700; margin: 18px 0 6px; }
+  .cs-seo-box p { margin: 0 0 12px; color: #cbd5e1; }
+  .cs-seo-box a { color: #38bdf8; text-decoration: none; }
+</style>
+<!-- /CS_UPGRADE_CSS -->
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -50,6 +97,56 @@
       </div>
     </div>
   </header>
+<!-- CS_UPGRADE_TOP -->
+<section class="cs-notice-wrap">
+  <p class="cs-notice-text">
+    Bookmark our official domain <strong>CrackStream.watch</strong> for uninterrupted HD live sports streams. Please share the link with friends to help us stay visible on search engines.
+  </p>
+  <div class="cs-tg-bar">
+    Please join our Telegram: <a href="https://t.me/korastream2027" target="_blank" rel="noopener">Telegram Channel</a>
+  </div>
+</section>
+
+<section class="cs-cats-wrap" aria-label="Sports Categories">
+  <div class="cs-cat-card" onclick="csJumpToSport('NFL')">
+    <div class="cs-cat-icon">🏈</div>
+    <div class="cs-cat-info"><h3>NFL Streams</h3><p>Click to view all games</p></div>
+  </div>
+  <div class="cs-cat-card" onclick="csJumpToSport('NBA')">
+    <div class="cs-cat-icon">🏀</div>
+    <div class="cs-cat-info"><h3>NBA Streams</h3><p>Click to view all games</p></div>
+  </div>
+  <div class="cs-cat-card" onclick="csJumpToSport('Soccer')">
+    <div class="cs-cat-icon">⚽</div>
+    <div class="cs-cat-info"><h3>Soccer Streams</h3><p>Click to view all games</p></div>
+  </div>
+  <div class="cs-cat-card" onclick="csJumpToSport('NHL')">
+    <div class="cs-cat-icon">🏒</div>
+    <div class="cs-cat-info"><h3>NHL Streams</h3><p>Click to view all games</p></div>
+  </div>
+  <div class="cs-cat-card" onclick="csJumpToSport('Boxing')">
+    <div class="cs-cat-icon">🥊</div>
+    <div class="cs-cat-info"><h3>Boxing Streams</h3><p>Click to view all games</p></div>
+  </div>
+  <div class="cs-cat-card" onclick="csJumpToSport('MMA')">
+    <div class="cs-cat-icon">🥋</div>
+    <div class="cs-cat-info"><h3>UFC / MMA Streams</h3><p>Click to view all games</p></div>
+  </div>
+  <div class="cs-cat-card" onclick="csJumpToSport('MLB')">
+    <div class="cs-cat-icon">⚾</div>
+    <div class="cs-cat-info"><h3>MLB Streams</h3><p>Click to view all games</p></div>
+  </div>
+</section>
+<script>
+function csJumpToSport(sport) {
+  const btns = Array.from(document.querySelectorAll("button, [data-sport], .tab-btn, .filter-btn"));
+  const match = btns.find(b => b.textContent && b.textContent.toLowerCase().includes(sport.toLowerCase()));
+  if (match) match.click();
+  const target = document.querySelector("#matches, #matches-grid, .matches-grid, main");
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+</script>
+<!-- /CS_UPGRADE_TOP -->
 
   <main class="max-w-6xl w-full mx-auto px-4 py-5 flex-1">
 
@@ -136,7 +233,33 @@
     </section>
   </main>
 
-  <footer class="border-t border-slate-800 py-5 text-center text-xs text-slate-500 mt-8">
+  <!-- CS_UPGRADE_SEO -->
+<section class="cs-seo-box">
+  <p><strong>CrackStream.watch</strong> is a free live sports streaming platform covering Soccer, NFL RedZone, NBA, UFC / MMA, Boxing, NHL, MLB, NCAA, F1, and more. Simply pick the sport or live match you want to watch and hit play—no signup or cable subscription required.</p>
+
+  <h2>What is CrackStream?</h2>
+  <p>CrackStream is a one-stop destination where sports fans can watch live games online in HD for free. Covering NFL football, NBA basketball, NHL hockey, MLB baseball, UFC PPV fights, Boxing, and global Soccer leagues, CrackStream delivers fast, reliable backup servers on PC, Mac, iPhone, Android, and Smart TV.</p>
+
+  <h3>NBA Live Streaming</h3>
+  <p>Watch every NBA game live in crystal-clear HD quality. From regular season matchups to playoff intensity and NBA Finals drama, our basketball streams deliver smooth, uninterrupted action worldwide.</p>
+
+  <h3>NFL Live Streaming &amp; NFL RedZone</h3>
+  <p>Experience every NFL game from Thursday Night Football to Sunday showdowns, Monday Night Football, Playoffs, and the Super Bowl. Catch every touchdown and highlight live on NFL RedZone with zero buffering.</p>
+
+  <h3>UFC and MMA Coverage</h3>
+  <p>Combat sports fans can watch every UFC Fight Night, PPV main card, prelim, knockout, and title fight in HD quality with multiple working stream mirrors.</p>
+
+  <h3>Boxing Championship Streaming</h3>
+  <p>Follow heavyweight championship bouts and major boxing events live online with fast-loading HD streams and instant backup links.</p>
+
+  <h3>Soccer Tournament Streaming</h3>
+  <p>Stream Premier League, UEFA Champions League, La Liga, Serie A, Bundesliga, and international football tournaments live with full matchday coverage.</p>
+
+  <h2>Original UFC Streams | Reddit MMA Streams | BuffStreams &amp; MethStreams Alternative</h2>
+  <p>Looking for a reliable alternative to CrackStreams, MethStreams, BuffStreams, or Reddit MMA Streams? Bookmark <a href="https://crackstream.watch/">CrackStream.watch</a> for daily updated schedules, live scores, and HD sports streams all in one place.</p>
+</section>
+<!-- /CS_UPGRADE_SEO -->
+<footer class="border-t border-slate-800 py-5 text-center text-xs text-slate-500 mt-8">
     CrackStream — Free HD Live Sports Streams (NFL, NBA, Premier League, UFC, F1). All streams are hosted by third-party providers.
   </footer>
 
