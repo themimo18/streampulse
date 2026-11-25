@@ -108,11 +108,15 @@ async function tmLoadAll() {
         const homeName = (home && ((home.team && home.team.displayName) || (home.athlete && home.athlete.displayName))) || ev.name;
         const awayName = (away && ((away.team && away.team.displayName) || (away.athlete && away.athlete.displayName))) || "";
         const dt = new Date(ev.date);
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        const yy = String(dt.getFullYear()).slice(-2);
         const timeStr = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+        const dateTimeStr = dd + "/" + mm + "/" + yy + " " + timeStr;
         const state = ev.status && ev.status.type && ev.status.type.state;
         const isLive = state === "in";
         const isDone = state === "post";
-        const status = isLive ? "🔴 LIVE" : (isDone ? "✅ Final (" + timeStr + ")" : "🕒 " + timeStr);
+        const status = isLive ? "🔴 LIVE (" + dateTimeStr + ")" : (isDone ? "✅ Final (" + dateTimeStr + ")" : "🕒 " + dateTimeStr);
         TM_MATCHES.push({
           sport: f.sport,
           league: f.league,
