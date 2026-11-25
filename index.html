@@ -478,23 +478,22 @@ function csJumpToSport(sport) {
 })();
 </script>
 <!-- /CS_LOGOS_MOD -->
+
 <!-- HIDE_247_MOD -->
 <script>
-window.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll("button, a, div").forEach(el => {
-    if (el.children.length === 0 && /24/7s*TVs*Channels/i.test(el.textContent)) {
-      el.style.display = "none";
+function hide247() {
+  document.querySelectorAll("button, a").forEach(el => {
+    if (/24/7/i.test(el.textContent)) {
+      el.style.setProperty("display", "none", "important");
       const parent = el.parentElement;
       if (parent) {
         parent.style.gridTemplateColumns = "1fr";
-        parent.style.display = "flex";
-        Array.from(parent.children).forEach(child => {
-          if (child !== el) child.style.flex = "1";
-        });
       }
     }
   });
-});
+}
+window.addEventListener("DOMContentLoaded", hide247);
+setTimeout(hide247, 500);
 </script>
 <!-- /HIDE_247_MOD -->
 </body>
