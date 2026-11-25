@@ -505,42 +505,33 @@ function csFindTeamLogo(teamName, fallback) {
   return fallback;
 }
 
+function csParseDateFromTime(mt) {
+  const s = String(mt || "").trim();
+  const token = s.split(" ")[0];
+  if (!token || token.indexOf("/") === -1) return null;
+  const parts = token.split("/");
+  if (parts.length !== 3) return null;
+  const dd = parseInt(parts[0], 10);
+  const mm = parseInt(parts[1], 10) - 1;
+  let yy = parseInt(parts[2], 10);
+  if (isNaN(dd) || isNaN(mm) || isNaN(yy)) return null;
+  if (yy < 100) yy += 2000;
+  return new Date(yy, mm, dd).getTime();
+}
+
 function csGetMatchDay(m) {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const dayMs = 86400000;
-  let matchDate = null;
-
-  const mt = String(m.match_time || "");
-  const dMatch = mt.match(new RegExp("([0-9]{1,2})/([0-9]{1,2})/([0-9]{2,4})"));
-  if (dMatch) {
-    const dd = parseInt(dMatch[1], 10);
-    const mm = parseInt(dMatch[2], 10) - 1;
-    let yy = parseInt(dMatch[3], 10);
-    if (yy < 100) yy += 2000;
-    matchDate = new Date(yy, mm, dd).getTime();
-  } else if (m.created_at) {
-    const c = new Date(m.created_at);
-    if (!isNaN(c.getTime())) {
-      matchDate = new Date(c.getFullYear(), c.getMonth(), c.getDate()).getTime();
-    }
-  }
-
-  if (matchDate === null || isNaN(matchDate)) return "today";
-  const diff = Math.round((matchDate - todayStart) / dayMs);
+  const matchDate = csParseDateFromTime(m.match_time);
+  if (matchDate === null) return "today";
+  const diff = Math.round((matchDate - todayStart) / 86400000);
   if (diff < 0) return "yesterday";
   if (diff > 0) return "tomorrow";
   return "today";
 }
 
 function csFormatDateTime(m) {
-  const mt = (m.match_time || "").trim();
-  if (/\d{1,2}\/\d{1,2}\/\d{2,4}/.test(mt)) return mt;
-  const d = m.created_at ? new Date(m.created_at) : new Date();
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  return dd + "/" + mm + "/" + yy + " " + (mt || "TBA");
+  return String(m.match_time || "TBA").trim();
 }
 
 function csBuildTitleWithLogos(m) {
