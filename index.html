@@ -411,9 +411,11 @@ function csJumpToSport(sport) {
 
 
 
+
 <!-- CS_DAY_AND_LOGOS -->
 <script>
 let currentDay = "today";
+let csAutoSwitched = false;
 
 const CS_LEAGUE_LOGOS = {
   nfl: "https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png",
@@ -427,47 +429,98 @@ const CS_LEAGUE_LOGOS = {
 };
 
 const CS_TEAM_LOGOS = {
-  // Football / Soccer
-  "barcelona": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+  "bar": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
   "fcb": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+  "barcelona": "https://a.espncdn.com/i/teamlogos/soccer/500/83.png",
+  "rma": "https://a.espncdn.com/i/teamlogos/soccer/500/86.png",
   "real madrid": "https://a.espncdn.com/i/teamlogos/soccer/500/86.png",
+  "atm": "https://a.espncdn.com/i/teamlogos/soccer/500/1068.png",
   "atletico": "https://a.espncdn.com/i/teamlogos/soccer/500/1068.png",
-  "manchester city": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
+  "mnc": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
+  "mci": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
   "man city": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
-  "manchester united": "https://a.espncdn.com/i/teamlogos/soccer/500/360.png",
+  "manchester city": "https://a.espncdn.com/i/teamlogos/soccer/500/382.png",
+  "mun": "https://a.espncdn.com/i/teamlogos/soccer/500/360.png",
   "man utd": "https://a.espncdn.com/i/teamlogos/soccer/500/360.png",
+  "manchester united": "https://a.espncdn.com/i/teamlogos/soccer/500/360.png",
+  "liv": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png",
   "liverpool": "https://a.espncdn.com/i/teamlogos/soccer/500/364.png",
+  "ars": "https://a.espncdn.com/i/teamlogos/soccer/500/359.png",
   "arsenal": "https://a.espncdn.com/i/teamlogos/soccer/500/359.png",
+  "che": "https://a.espncdn.com/i/teamlogos/soccer/500/363.png",
   "chelsea": "https://a.espncdn.com/i/teamlogos/soccer/500/363.png",
+  "tot": "https://a.espncdn.com/i/teamlogos/soccer/500/367.png",
   "tottenham": "https://a.espncdn.com/i/teamlogos/soccer/500/367.png",
+  "nfo": "https://a.espncdn.com/i/teamlogos/soccer/500/393.png",
+  "nottingham": "https://a.espncdn.com/i/teamlogos/soccer/500/393.png",
+  "avl": "https://a.espncdn.com/i/teamlogos/soccer/500/362.png",
+  "aston villa": "https://a.espncdn.com/i/teamlogos/soccer/500/362.png",
+  "new": "https://a.espncdn.com/i/teamlogos/soccer/500/361.png",
   "psg": "https://a.espncdn.com/i/teamlogos/soccer/500/160.png",
   "paris saint": "https://a.espncdn.com/i/teamlogos/soccer/500/160.png",
+  "bay": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
   "bayern": "https://a.espncdn.com/i/teamlogos/soccer/500/132.png",
+  "dor": "https://a.espncdn.com/i/teamlogos/soccer/500/124.png",
+  "bvb": "https://a.espncdn.com/i/teamlogos/soccer/500/124.png",
   "dortmund": "https://a.espncdn.com/i/teamlogos/soccer/500/124.png",
+  "rbl": "https://a.espncdn.com/i/teamlogos/soccer/500/11420.png",
+  "leipzig": "https://a.espncdn.com/i/teamlogos/soccer/500/11420.png",
+  "int": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
   "inter": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
+  "mil": "https://a.espncdn.com/i/teamlogos/soccer/500/103.png",
   "milan": "https://a.espncdn.com/i/teamlogos/soccer/500/103.png",
+  "juv": "https://a.espncdn.com/i/teamlogos/soccer/500/111.png",
   "juventus": "https://a.espncdn.com/i/teamlogos/soccer/500/111.png",
+  "nap": "https://a.espncdn.com/i/teamlogos/soccer/500/114.png",
   "napoli": "https://a.espncdn.com/i/teamlogos/soccer/500/114.png",
+  "rom": "https://a.espncdn.com/i/teamlogos/soccer/500/104.png",
   "roma": "https://a.espncdn.com/i/teamlogos/soccer/500/104.png",
+  "como": "https://a.espncdn.com/i/teamlogos/soccer/500/2572.png",
+  "psv": "https://a.espncdn.com/i/teamlogos/soccer/500/148.png",
+  "fey": "https://a.espncdn.com/i/teamlogos/soccer/500/142.png",
+  "feyenoord": "https://a.espncdn.com/i/teamlogos/soccer/500/142.png",
+  "aja": "https://a.espncdn.com/i/teamlogos/soccer/500/139.png",
+  "slb": "https://a.espncdn.com/i/teamlogos/soccer/500/1929.png",
   "benfica": "https://a.espncdn.com/i/teamlogos/soccer/500/1929.png",
+  "fcp": "https://a.espncdn.com/i/teamlogos/soccer/500/437.png",
+  "porto": "https://a.espncdn.com/i/teamlogos/soccer/500/437.png",
+  "scp": "https://a.espncdn.com/i/teamlogos/soccer/500/2250.png",
   "sporting": "https://a.espncdn.com/i/teamlogos/soccer/500/2250.png",
+  "bet": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
+  "betis": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
+  "lev": "https://a.espncdn.com/i/teamlogos/soccer/500/1538.png",
+  "levante": "https://a.espncdn.com/i/teamlogos/soccer/500/1538.png",
+  "rac": "https://a.espncdn.com/i/teamlogos/soccer/500/87.png",
+  "racing": "https://a.espncdn.com/i/teamlogos/soccer/500/87.png",
+  "vil": "https://a.espncdn.com/i/teamlogos/soccer/500/102.png",
   "villarreal": "https://a.espncdn.com/i/teamlogos/soccer/500/102.png",
-  // NBA
+  "sev": "https://a.espncdn.com/i/teamlogos/soccer/500/243.png",
+  "rcl": "https://a.espncdn.com/i/teamlogos/soccer/500/175.png",
+  "lens": "https://a.espncdn.com/i/teamlogos/soccer/500/175.png",
+  "gal": "https://a.espncdn.com/i/teamlogos/soccer/500/432.png",
+  "galatasaray": "https://a.espncdn.com/i/teamlogos/soccer/500/432.png",
+  "aek": "https://a.espncdn.com/i/teamlogos/soccer/500/887.png",
+  "lal": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
   "lakers": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+  "bos": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
   "celtics": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+  "gsw": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
   "warriors": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+  "den": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
   "nuggets": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+  "dal": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
   "mavericks": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+  "mia": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
   "heat": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+  "mil": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
   "bucks": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
-  "suns": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
-  "knicks": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
-  "76ers": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
-  "bulls": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
-  "magic": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
-  "pistons": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
-  "wizards": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
-  // NFL (abbreviations & names)
+  "phx": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+  "nyk": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+  "phi": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+  "chi": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+  "orl": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+  "det": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+  "was": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
   "kc": "https://a.espncdn.com/i/teamlogos/nfl/500/kc.png",
   "sf": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png",
   "min": "https://a.espncdn.com/i/teamlogos/nfl/500/min.png",
@@ -476,17 +529,13 @@ const CS_TEAM_LOGOS = {
   "jax": "https://a.espncdn.com/i/teamlogos/nfl/500/jax.png",
   "nyg": "https://a.espncdn.com/i/teamlogos/nfl/500/nyg.png",
   "lv": "https://a.espncdn.com/i/teamlogos/nfl/500/lv.png",
-  "den": "https://a.espncdn.com/i/teamlogos/nfl/500/den.png",
   "nyj": "https://a.espncdn.com/i/teamlogos/nfl/500/nyj.png",
   "lac": "https://a.espncdn.com/i/teamlogos/nfl/500/lac.png",
   "bal": "https://a.espncdn.com/i/teamlogos/nfl/500/bal.png",
   "car": "https://a.espncdn.com/i/teamlogos/nfl/500/car.png",
   "pit": "https://a.espncdn.com/i/teamlogos/nfl/500/pit.png",
-  "phi": "https://a.espncdn.com/i/teamlogos/nfl/500/phi.png",
   "ari": "https://a.espncdn.com/i/teamlogos/nfl/500/ari.png",
   "tb": "https://a.espncdn.com/i/teamlogos/nfl/500/tb.png",
-  "det": "https://a.espncdn.com/i/teamlogos/nfl/500/det.png",
-  "dal": "https://a.espncdn.com/i/teamlogos/nfl/500/dal.png",
   "buf": "https://a.espncdn.com/i/teamlogos/nfl/500/buf.png"
 };
 
@@ -558,7 +607,7 @@ function csFormatDateTime(m) {
 function csBuildTitleWithLogos(m) {
   const fallback = csGetLeagueLogo(m.sport, m.league);
   const title = m.title || "";
-  const parts = title.split(/\s+(?:vs\.?|@)\s+/i);
+  const parts = title.split(/s+(?:vs.?|@)s+/i);
   if (parts.length === 2) {
     const logo1 = csFindTeamLogo(parts[0], fallback);
     const logo2 = csFindTeamLogo(parts[1], fallback);
@@ -577,6 +626,33 @@ function csBuildTitleWithLogos(m) {
   '</div>';
 }
 
+function csUpdateDayCounts() {
+  if (typeof MATCHES === "undefined" || !MATCHES.length) return;
+  const counts = { yesterday: 0, today: 0, tomorrow: 0, all: MATCHES.length };
+  MATCHES.forEach(m => {
+    const d = csGetMatchDay(m);
+    if (counts[d] !== undefined) counts[d]++;
+  });
+  if (!csAutoSwitched && currentDay === "today" && counts.today === 0) {
+    csAutoSwitched = true;
+    currentDay = "all";
+    document.querySelectorAll(".cs-day-btn").forEach(b => {
+      const active = b.dataset.day === "all";
+      b.className = "cs-day-btn px-4 py-1.5 rounded-lg text-xs font-bold transition " +
+        (active ? "bg-teal-500 text-slate-950" : "bg-slate-800/80 text-slate-300 hover:bg-slate-700");
+    });
+  }
+  const labels = {
+    yesterday: "⬅️ Yesterday (" + counts.yesterday + ")",
+    today: "🔥 Today (" + counts.today + ")",
+    tomorrow: "➡️ Tomorrow (" + counts.tomorrow + ")",
+    all: "📅 All (" + counts.all + ")"
+  };
+  document.querySelectorAll(".cs-day-btn").forEach(b => {
+    b.textContent = labels[b.dataset.day];
+  });
+}
+
 function setDayFilter(day) {
   currentDay = day;
   document.querySelectorAll(".cs-day-btn").forEach(b => {
@@ -584,6 +660,7 @@ function setDayFilter(day) {
     b.className = "cs-day-btn px-4 py-1.5 rounded-lg text-xs font-bold transition " +
       (active ? "bg-teal-500 text-slate-950" : "bg-slate-800/80 text-slate-300 hover:bg-slate-700");
   });
+  csUpdateDayCounts();
   if (typeof render === "function") render();
 }
 
