@@ -258,8 +258,8 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
       btn.textContent = "⏳ Fetching...";
       setStatus("Fetching today's matches from ESPN...");
 
-      const { data: existing } = await sb.from("us_matches").select("id, title");
-      const existingMap = new Map((existing || []).map(m => [m.title, m.id]));
+      const { data: existing } = await sb.from("us_matches").select("title");
+      const existingTitles = new Set((existing || []).map(m => m.title));
 
       let added = 0;
       for (const feed of ESPN_FEEDS) {
@@ -275,26 +275,18 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
           const events = data.events || [];
           for (const ev of events) {
             const title = ev.shortName || ev.name;
-            if (!title) continue;
+            if (!title || existingTitles.has(title)) continue;
             const d = new Date(ev.date);
-          const today0 = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate()).getTime();
-          const ev0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-          const dayDiff = Math.round((ev0 - today0) / 86400000);
-          if (dayDiff < -1 || dayDiff > 1) continue;
             const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const yy = String(d.getFullYear()).slice(-2);
       const timeStr = dd + "/" + mm + "/" + yy + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) + " GMT";
             const isLive = ev.status?.type?.state === "in";
-            if (existingMap.has(title)) {
-            await sb.from("us_matches").update({ match_time: timeStr, is_live: isLive }).eq("id", existingMap.get(title));
-          } else {
             await sb.from("us_matches").insert([{
               title, sport: feed.sport, league: feed.league,
               match_time: timeStr, is_live: isLive, stream_url: "", server2_url: ""
             }]);
-            existingMap.set(title, true);
-          }
+            existingTitles.add(title);
             added++;
           }
         } catch (e) {}
