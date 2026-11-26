@@ -2,8 +2,44 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://crackstream.watch/</loc>
-    <lastmod>2026-11-24</lastmod>
-    <changefreq>daily</changefreq>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>hourly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://crackstream.watch/premier-league-streams.html</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://crackstream.watch/la-liga-streams.html</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://crackstream.watch/soccer-streams.html</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://crackstream.watch/nba-streams.html</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://crackstream.watch/nfl-streams.html</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://crackstream.watch/ufc-streams.html</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
   </url>
 </urlset>
