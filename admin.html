@@ -325,10 +325,33 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
   for (const feed of ESPN_FEEDS) {
     try {
       const sep = feed.url.includes("?") ? "&" : "?";
-      let res = await fetch(feed.url + sep + "dates=" + range);
-      if (!res.ok) res = await fetch(feed.url);
-      const data = await res.json();
-      const events = data.events || [];
+        const dayDates = [
+          fmtD(new Date(today0 - 86400000)),
+          fmtD(new Date(today0)),
+          fmtD(new Date(today0 + 86400000))
+        ];
+        const evMap = new Map();
+        for (const ds of dayDates) {
+          try {
+            const r = await fetch(feed.url + sep + "dates=" + ds);
+            if (r.ok) {
+              const d = await r.json();
+              for (const e of (d.events || [])) {
+                evMap.set(e.id || ((e.shortName || e.name) + "_" + e.date), e);
+              }
+            }
+          } catch (_) {}
+        }
+        if (evMap.size === 0) {
+          const r = await fetch(feed.url);
+          if (r.ok) {
+            const d = await r.json();
+            for (const e of (d.events || [])) {
+              evMap.set(e.id || ((e.shortName || e.name) + "_" + e.date), e);
+            }
+          }
+        }
+        const events = [...evMap.values()];
       for (const ev of events) {
         const title = ev.shortName || ev.name;
         if (!title) continue;
