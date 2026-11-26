@@ -694,12 +694,27 @@ window.addEventListener("DOMContentLoaded", () => {
 </script>
 <!-- /CS_DAY_AND_LOGOS -->
 
+
 <!-- CS_TEAM_LOGOS -->
 <script>
 (function csInitTeamLogos(FEEDS, SECTION_LOGOS, UFC_FALLBACK) {
-    const CACHE_KEY = "cs_espn_logos_v2_" + new Date().toISOString().slice(0, 10);
+    const CACHE_KEY = "cs_espn_live_v3_" + new Date().toISOString().slice(0, 10);
+    const TIME_RE = /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\s*GMT/i;
+    const TIME_RE_G = /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\s*GMT/gi;
     let logoMap = {};
     let scheduled = false;
+
+    if (!window.__csEndedBlocker) {
+      window.__csEndedBlocker = true;
+      document.addEventListener("click", function(e) {
+        const blocked = e.target && e.target.closest && e.target.closest("[data-cs-ended='1']");
+        if (blocked) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }
+      }, true);
+    }
 
     function norm(s) {
       return String(s || "")
@@ -713,14 +728,59 @@ window.addEventListener("DOMContentLoaded", () => {
       return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
+    function parseCardGmtMs(str) {
+      const m = String(str || "").match(TIME_RE);
+      if (!m) return null;
+      return Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]), 0);
+    }
+
+    function formatKickoff(ms) {
+      const dt = new Date(ms);
+      const dd = String(dt.getUTCDate()).padStart(2, "0");
+      const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+      const hh = String(dt.getUTCHours()).padStart(2, "0");
+      const mi = String(dt.getUTCMinutes()).padStart(2, "0");
+      return dd + "/" + mm + " • " + hh + ":" + mi + " GMT";
+    }
+
+    function formatCountdown(msLeft) {
+      if (msLeft <= 0) return "Starting soon...";
+      const totalSec = Math.floor(msLeft / 1000);
+      const d = Math.floor(totalSec / 86400);
+      const h = Math.floor((totalSec % 86400) / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const pad = n => String(n).padStart(2, "0");
+      if (d > 0) return d + "d " + pad(h) + "h " + pad(m) + "m";
+      return pad(h) + "h " + pad(m) + "m " + pad(s) + "s";
+    }
+
     function extractTeam(c) {
       const t = c && c.team ? c.team : null;
       const a = c && c.athlete ? c.athlete : null;
+      const rawScore = c && c.score !== undefined && c.score !== null ? String(c.score).trim() : "";
       return {
         name: (t && (t.shortDisplayName || t.displayName || t.name)) || (a && (a.shortName || a.displayName)) || "",
         abbr: (t && t.abbreviation) || "",
+        score: rawScore,
+        winner: Boolean(c && c.winner),
         logo: (t && (t.logo || (t.logos && t.logos[0] && t.logos[0].href))) || (a && ((a.headshot && a.headshot.href) || (a.flag && a.flag.href))) || ""
       };
+    }
+
+    function pickMatch(key, cardTimeMs) {
+      const arr = logoMap[key];
+      if (!arr || !arr.length) return null;
+      if (arr.length === 1 || !cardTimeMs) return arr[0];
+      let best = arr[0], bestDiff = Math.abs((arr[0].dateMs || 0) - cardTimeMs);
+      for (let i = 1; i < arr.length; i++) {
+        const diff = Math.abs((arr[i].dateMs || 0) - cardTimeMs);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = arr[i];
+        }
+      }
+      return best;
     }
 
     function hideLeadingSportIcon(el) {
@@ -741,6 +801,147 @@ window.addEventListener("DOMContentLoaded", () => {
         }
         cur = cur.parentElement;
       }
+    }
+
+    function findCardFromEl(el) {
+      let cur = el.parentElement;
+      let candidate = null;
+      for (let i = 0; i < 6 && cur && cur !== document.body; i++) {
+        const cls = typeof cur.className === "string" ? cur.className : "";
+        if (/\bgrid\b/.test(cls)) break;
+        const timeMatches = (cur.textContent || "").match(TIME_RE_G);
+        if (timeMatches && timeMatches.length > 1) break;
+        const parentCls = cur.parentElement && typeof cur.parentElement.className === "string" ? cur.parentElement.className : "";
+        if (cur.hasAttribute("onclick") || /\bgrid\b/.test(parentCls)) {
+          return cur;
+        }
+        if (timeMatches && timeMatches.length === 1) {
+          candidate = cur;
+        }
+        cur = cur.parentElement;
+      }
+      return candidate;
+    }
+
+    function findTimeSlot(card) {
+      const existing = card.querySelector("[data-cs-status-slot='1']");
+      if (existing) return existing;
+      const els = card.querySelectorAll("div, span, p, time");
+      for (const node of els) {
+        if (node.dataset.csLogoDone || node.closest("[data-cs-logo-done]")) continue;
+        if (!TIME_RE.test(node.textContent || "")) continue;
+        let childHasTime = false;
+        for (const ch of node.children) {
+          if (TIME_RE.test(ch.textContent || "")) { childHasTime = true; break; }
+        }
+        if (!childHasTime) {
+          node.dataset.csStatusSlot = "1";
+          node.dataset.csRawTime = (node.textContent || "").trim();
+          return node;
+        }
+      }
+      return null;
+    }
+
+    function renderCardStatus(card, timeEl, info, cardTimeMs) {
+      if (!card || !timeEl) return;
+      const now = Date.now();
+      const startMs = (info && info.dateMs) || cardTimeMs;
+      let state = info ? info.state : "";
+      const detail = (info && info.detail) || "";
+
+      if (!state && startMs) {
+        if (startMs > now) state = "pre";
+        else if (now - startMs > 3.5 * 3600000) state = "post";
+        else state = "in";
+      }
+      if (!state) return;
+
+      const hasScore = Boolean(info && info.awayScore !== "" && info.homeScore !== "");
+      const sig = [state, info ? info.awayScore : "", info ? info.homeScore : "", detail, startMs || ""].join("|");
+
+      if (state === "post") {
+        card.dataset.csEnded = "1";
+        card.style.opacity = "0.58";
+        card.style.cursor = "not-allowed";
+        card.style.filter = "grayscale(20%)";
+        card.setAttribute("title", "Match ended");
+      } else {
+        delete card.dataset.csEnded;
+        card.style.opacity = "";
+        card.style.cursor = "";
+        card.style.filter = "";
+        card.removeAttribute("title");
+      }
+
+      if (timeEl.dataset.csStateSig === sig) return;
+      timeEl.dataset.csStateSig = sig;
+      timeEl.classList.remove("truncate", "whitespace-nowrap");
+
+      if (state === "post") {
+        const aNum = Number(info && info.awayScore), hNum = Number(info && info.homeScore);
+        const aWin = (info && info.awayWinner) || (!Number.isNaN(aNum) && !Number.isNaN(hNum) && aNum > hNum);
+        const hWin = (info && info.homeWinner) || (!Number.isNaN(aNum) && !Number.isNaN(hNum) && hNum > aNum);
+        const scoreHtml = hasScore
+          ? '<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-800/90 border border-slate-700 text-sm font-extrabold tabular-nums">' +
+              '<span class="' + (aWin ? "text-white" : "text-slate-400") + '">' + esc(info.awayScore) + '</span>' +
+              '<span class="text-slate-500 text-xs">-</span>' +
+              '<span class="' + (hWin ? "text-white" : "text-slate-400") + '">' + esc(info.homeScore) + '</span>' +
+            '</div>'
+          : "";
+        const endLabel = /OT|PEN|ET/i.test(detail) ? detail.toUpperCase() : "ENDED";
+        timeEl.innerHTML =
+          '<div class="inline-flex flex-col items-end gap-1">' +
+            scoreHtml +
+            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/15 border border-red-500/30 text-[10px] font-bold uppercase tracking-wider text-red-300">' +
+              '<span>🔒</span><span>' + esc(endLabel) + '</span>' +
+            '</span>' +
+          '</div>';
+      } else if (state === "in") {
+        const scoreHtml = hasScore
+          ? '<div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-sm font-extrabold text-white tabular-nums">' +
+              '<span>' + esc(info.awayScore) + '</span>' +
+              '<span class="text-emerald-400 text-xs">-</span>' +
+              '<span>' + esc(info.homeScore) + '</span>' +
+            '</div>'
+          : "";
+        const liveTxt = detail ? ("LIVE • " + detail) : "LIVE";
+        timeEl.innerHTML =
+          '<div class="inline-flex flex-col items-end gap-1">' +
+            scoreHtml +
+            '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-red-600/20 border border-red-500/40 text-[10px] font-bold uppercase tracking-wider text-red-400">' +
+              '<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>' +
+              '<span>' + esc(liveTxt) + '</span>' +
+            '</span>' +
+          '</div>';
+      } else {
+        const kickoffLabel = startMs ? formatKickoff(startMs) : (timeEl.dataset.csRawTime || "");
+        const cdText = startMs ? formatCountdown(startMs - now) : "";
+        timeEl.innerHTML =
+          '<div class="inline-flex flex-col items-end gap-1">' +
+            '<span class="text-xs font-semibold text-amber-300 tabular-nums">🕒 ' + esc(kickoffLabel) + '</span>' +
+            (startMs
+              ? '<span data-cs-countdown="' + startMs + '" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-[11px] font-bold text-sky-300 tabular-nums">⏳ ' + esc(cdText) + '</span>'
+              : "") +
+          '</div>';
+      }
+    }
+
+    function tickCountdowns() {
+      const now = Date.now();
+      let needRefresh = false;
+      document.querySelectorAll("[data-cs-countdown]").forEach(el => {
+        const target = Number(el.dataset.csCountdown);
+        if (!target) return;
+        const left = target - now;
+        const nextText = "⏳ " + formatCountdown(left);
+        if (el.textContent !== nextText) el.textContent = nextText;
+        if (left <= 0 && !el.dataset.csTriggered) {
+          el.dataset.csTriggered = "1";
+          needRefresh = true;
+        }
+      });
+      if (needRefresh) loadLogos(true);
     }
 
     function applySectionLogos() {
@@ -788,32 +989,74 @@ window.addEventListener("DOMContentLoaded", () => {
 
     function applyLogos() {
       applySectionLogos();
-      if (!Object.keys(logoMap).length) return;
-      const nodes = document.querySelectorAll("div, span, h1, h2, h3, h4, p, strong");
-      nodes.forEach(el => {
-        if (el.dataset.csLogoDone || el.closest("[data-cs-logo-done]")) return;
-        if (el.querySelector("input, button, select, textarea, iframe, img")) return;
-        const key = norm(el.textContent);
-        if (!key || !logoMap[key]) return;
-        for (const ch of el.children) {
-          if (norm(ch.textContent) === key) return;
+
+      // Pass 1: Match teams & inject official logos
+      if (Object.keys(logoMap).length) {
+        const nodes = document.querySelectorAll("div, span, h1, h2, h3, h4, p, strong");
+        nodes.forEach(el => {
+          if (el.dataset.csLogoDone || el.closest("[data-cs-logo-done]")) return;
+          if (el.querySelector("input, button, select, textarea, iframe, img")) return;
+          const key = norm(el.textContent);
+          if (!key || !logoMap[key]) return;
+          for (const ch of el.children) {
+            if (norm(ch.textContent) === key) return;
+          }
+          const card = findCardFromEl(el);
+          const timeEl = card ? findTimeSlot(card) : null;
+          const cardTimeMs = timeEl ? parseCardGmtMs(timeEl.dataset.csRawTime || timeEl.textContent) : null;
+          const info = pickMatch(key, cardTimeMs);
+          if (!info) return;
+
+          el.dataset.csLogoDone = "1";
+          el.dataset.csMatchKey = key;
+          el.classList.remove("truncate", "whitespace-nowrap");
+          hideLeadingSportIcon(el);
+          const imgA = info.awayLogo
+            ? '<img src="' + esc(info.awayLogo) + '" alt="' + esc(info.awayName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
+            : "";
+          const imgH = info.homeLogo
+            ? '<img src="' + esc(info.homeLogo) + '" alt="' + esc(info.homeName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
+            : "";
+          el.innerHTML =
+            '<span class="inline-flex items-center flex-wrap gap-x-2 gap-y-1">' +
+              '<span class="inline-flex items-center gap-1.5">' + imgA + '<span>' + esc(info.awayName) + '</span></span>' +
+              '<span class="text-[11px] font-bold text-slate-400 uppercase">vs</span>' +
+              '<span class="inline-flex items-center gap-1.5">' + imgH + '<span>' + esc(info.homeName) + '</span></span>' +
+            '</span>';
+
+          if (card) {
+            card.dataset.csCard = "1";
+            card.dataset.csMatchKey = key;
+            if (timeEl) renderCardStatus(card, timeEl, info, cardTimeMs);
+          }
+        });
+      }
+
+      // Pass 2: Refresh status on already-tagged cards
+      document.querySelectorAll("[data-cs-card='1']").forEach(card => {
+        const timeEl = findTimeSlot(card);
+        if (!timeEl) return;
+        const cardTimeMs = parseCardGmtMs(timeEl.dataset.csRawTime || timeEl.textContent);
+        const key = card.dataset.csMatchKey || "";
+        const info = key ? pickMatch(key, cardTimeMs) : null;
+        renderCardStatus(card, timeEl, info, cardTimeMs);
+      });
+
+      // Pass 3: Fallback for any non-ESPN match card that still has a GMT timestamp
+      const timeNodes = document.querySelectorAll("div, span, p, time");
+      timeNodes.forEach(node => {
+        if (node.dataset.csStatusSlot || node.closest("[data-cs-status-slot]")) return;
+        if (!TIME_RE.test(node.textContent || "")) return;
+        for (const ch of node.children) {
+          if (TIME_RE.test(ch.textContent || "")) return;
         }
-        const info = logoMap[key];
-        el.dataset.csLogoDone = "1";
-        el.classList.remove("truncate", "whitespace-nowrap");
-        hideLeadingSportIcon(el);
-        const imgA = info.awayLogo
-          ? '<img src="' + esc(info.awayLogo) + '" alt="' + esc(info.awayName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
-          : "";
-        const imgH = info.homeLogo
-          ? '<img src="' + esc(info.homeLogo) + '" alt="' + esc(info.homeName) + '" class="w-6 h-6 rounded-full bg-white/10 p-0.5 object-contain shrink-0" onerror="this.style.display=\'none\'">'
-          : "";
-        el.innerHTML =
-          '<span class="inline-flex items-center flex-wrap gap-x-2 gap-y-1">' +
-            '<span class="inline-flex items-center gap-1.5">' + imgA + '<span>' + esc(info.awayName) + '</span></span>' +
-            '<span class="text-[11px] font-bold text-slate-400 uppercase">vs</span>' +
-            '<span class="inline-flex items-center gap-1.5">' + imgH + '<span>' + esc(info.homeName) + '</span></span>' +
-          '</span>';
+        const card = findCardFromEl(node);
+        if (!card || card.dataset.csCard) return;
+        node.dataset.csStatusSlot = "1";
+        node.dataset.csRawTime = (node.textContent || "").trim();
+        card.dataset.csCard = "1";
+        const cardTimeMs = parseCardGmtMs(node.dataset.csRawTime);
+        renderCardStatus(card, node, null, cardTimeMs);
       });
     }
 
@@ -826,19 +1069,21 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    async function loadLogos() {
+    async function loadLogos(forceRefresh) {
       applySectionLogos();
-      try {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed && parsed.ts && Date.now() - parsed.ts < 900000 && parsed.map) {
-            logoMap = parsed.map;
-            scheduleApply();
-            return;
+      if (!forceRefresh) {
+        try {
+          const cached = sessionStorage.getItem(CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.ts && Date.now() - parsed.ts < 60000 && parsed.map) {
+              logoMap = parsed.map;
+              scheduleApply();
+              return;
+            }
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
 
       const now = new Date();
       const today0 = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -846,9 +1091,15 @@ window.addEventListener("DOMContentLoaded", () => {
         const dt = new Date(ms);
         return dt.getUTCFullYear() + String(dt.getUTCMonth() + 1).padStart(2, "0") + String(dt.getUTCDate()).padStart(2, "0");
       };
-      const range = fmt(today0 - 86400000) + "-" + fmt(today0 + 2 * 86400000);
+      const range = fmt(today0 - 2 * 86400000) + "-" + fmt(today0 + 3 * 86400000);
 
       const map = {};
+      function addEntry(k, entry) {
+        if (!k) return;
+        if (!map[k]) map[k] = [];
+        if (!map[k].some(x => x.id && x.id === entry.id)) map[k].push(entry);
+      }
+
       await Promise.allSettled(FEEDS.map(async feed => {
         try {
           const sep = feed.url.includes("?") ? "&" : "?";
@@ -861,21 +1112,44 @@ window.addEventListener("DOMContentLoaded", () => {
             events = data.events || [];
           }
           events.forEach(ev => {
-            const comps = (ev.competitions && ev.competitions[0] && ev.competitions[0].competitors) || [];
+            const comp = ev.competitions && ev.competitions[0];
+            const comps = (comp && comp.competitors) || [];
             if (comps.length < 2) return;
             const awayC = comps.find(c => c.homeAway === "away") || comps[1];
             const homeC = comps.find(c => c.homeAway === "home") || comps[0];
             const away = extractTeam(awayC);
             const home = extractTeam(homeC);
             if (!away.name || !home.name) return;
-            const entry = { awayName: away.name, awayLogo: away.logo, homeName: home.name, homeLogo: home.logo };
+
+            const st = (ev.status && ev.status.type) || (comp && comp.status && comp.status.type) || {};
+            const state = st.completed ? "post" : (st.state || "");
+            const detail = st.shortDetail || st.description || "";
+            const dateMs = ev.date ? Date.parse(ev.date) : null;
+
+            const entry = {
+              id: ev.id || (away.name + "_" + home.name + "_" + dateMs),
+              awayName: away.name,
+              awayLogo: away.logo,
+              awayScore: away.score,
+              awayWinner: away.winner,
+              homeName: home.name,
+              homeLogo: home.logo,
+              homeScore: home.score,
+              homeWinner: home.winner,
+              state: state,
+              detail: detail,
+              dateMs: Number.isNaN(dateMs) ? null : dateMs
+            };
+
             const keys = [norm(ev.shortName), norm(ev.name)];
             if (ev.shortName && ev.shortName.includes("@")) keys.push(norm(ev.shortName.replace("@", "VS")));
             if (away.abbr && home.abbr) {
               keys.push(norm(away.abbr + " @ " + home.abbr));
               keys.push(norm(away.abbr + " VS " + home.abbr));
             }
-            keys.forEach(k => { if (k) map[k] = entry; });
+            keys.push(norm(away.name + " VS " + home.name));
+            keys.push(norm(away.name + " @ " + home.name));
+            keys.forEach(k => addEntry(k, entry));
           });
         } catch (e) {}
       }));
@@ -888,7 +1162,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const obs = new MutationObserver(scheduleApply);
     const start = () => {
       if (document.body) obs.observe(document.body, { childList: true, subtree: true });
-      loadLogos();
+      loadLogos(false);
+      setInterval(tickCountdowns, 1000);
+      setInterval(() => loadLogos(true), 60000);
     };
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", start);
