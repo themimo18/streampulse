@@ -238,13 +238,67 @@ window.addEventListener("DOMContentLoaded", tmLoadAll);
     const sb = window.supabase.createClient("https://uwyljkxcfcqmteltjzxu.supabase.co", "sb_publishable_5E_ajIPbGSP0Kx9a_LJJXQ_xiG4Jahx");
 
     const ESPN_FEEDS = [
-      { sport: "football", league: "Champions League", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard" },
-      { sport: "football", league: "Premier League", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard" },
-      { sport: "football", league: "La Liga", url: "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard" },
-      { sport: "basketball", league: "NBA", url: "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard" },
-      { sport: "american-football", league: "NFL", url: "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" },
-      { sport: "fight", league: "UFC", url: "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard" }
-    ];
+  {
+    "sport": "football",
+    "league": "Champions League",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Premier League",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "La Liga",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard"
+  },
+  {
+    "sport": "basketball",
+    "league": "NBA",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+  },
+  {
+    "sport": "american-football",
+    "league": "NFL",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+  },
+  {
+    "sport": "fight",
+    "league": "UFC",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Europa League",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Conference League",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa.conf/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Serie A",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Bundesliga",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Ligue 1",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/scoreboard"
+  },
+  {
+    "sport": "football",
+    "league": "Saudi Pro League",
+    "url": "https://site.api.espn.com/apis/site/v2/sports/soccer/ksa.1/scoreboard"
+  }
+];
 
     function setStatus(msg) {
       const el = document.getElementById("status-bar");
